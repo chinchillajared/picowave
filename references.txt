@@ -1,0 +1,5 @@
+https://github.com/picotech/picosdk-python-wrappers
+
+https://github.com/picotech/pyPicoSDK
+
+https://www.picotech.com/library/our-oscilloscope-software-development-kit-sdk

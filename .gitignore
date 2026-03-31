@@ -1,0 +1,49 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.code-workspace
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Local runtime output
+*.log
+*.tmp
+*.bak
+logs/*
+!logs/.gitkeep
+
+# Exported waveform data
+*.csv
+*.npy
+
+# Agent handoff notes
+AGENTS.md
+
+# Local prompt scratch files
+structure_prompt.txt
