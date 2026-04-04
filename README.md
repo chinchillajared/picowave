@@ -9,7 +9,7 @@ The app talks to real hardware through the `ps2000` driver family. There is no d
 - Real hardware connection for the PicoScope 2204A
 - Startup connection dialog to choose an available oscilloscope
 - `Run / Stop` acquisition control
-- `Block`, `Compatible streaming`, and `Fast streaming` modes
+- `Block` and `Fast streaming` modes
 - Combined `Timebase / Sample rate` control with automatic pairing logic
 - Channel A, Channel B, and `Custom Math Channel`
 - Trigger configuration, trigger marker, and direct trigger dragging on the waveform
@@ -52,7 +52,7 @@ python main.py
 
 1. Launch the app.
 2. In the startup dialog, select the connected PicoScope and click `Connect`.
-3. Use `Mode` to choose `Block`, `Compatible streaming`, or `Fast streaming`.
+3. Use `Mode` to choose `Block` or `Fast streaming`.
 4. Use `Timebase / Sample rate` to choose the time window and the valid sample rate for the current mode.
 5. Click `stopped` to start acquisition. It changes to `running`.
 6. Click Channel `A`, `B`, or `Custom Math Channel` to open the side configuration panel.
@@ -92,7 +92,6 @@ python -m unittest -q
 ## Notes
 
 - This project uses the `ps2000` API path for the `2204A`.
-- `Compatible streaming` remains intentionally limited as the legacy low-rate path.
 - Timing options are revalidated automatically when `Mode`, channel state, voltage range, or `Timebase` changes.
 - Waveform history is reset when changes invalidate comparison between saved captures and new acquisitions.
 - Runtime logs are written to `logs/picowave.log`.

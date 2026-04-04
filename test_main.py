@@ -103,7 +103,9 @@ class FakePS:
     def set_null_trigger(self, device) -> None:
         self.trigger_configured = True
 
-    def _set_trigger2(self, handle, source, threshold, direction, delay, auto_trigger_ms):
+    def _set_trigger2(
+        self, handle, source, threshold, direction, delay, auto_trigger_ms
+    ):
         self.trigger_args = {
             "kind": "simple",
             "source": source.value,
@@ -115,19 +117,29 @@ class FakePS:
         self.trigger_configured = True
         return 1
 
-    def _SetAdvTriggerChannelProperties(self, handle, channel_properties, count, auto_trigger_ms):
+    def _SetAdvTriggerChannelProperties(
+        self, handle, channel_properties, count, auto_trigger_ms
+    ):
         count_value = count.value if hasattr(count, "value") else int(count)
-        self.advanced_properties = [channel_properties[index] for index in range(count_value)]
+        self.advanced_properties = [
+            channel_properties[index] for index in range(count_value)
+        ]
         self.trigger_configured = True
         return 1
 
     def _SetAdvTriggerChannelConditions(self, handle, conditions, count):
         count_value = count.value if hasattr(count, "value") else int(count)
-        self.advanced_conditions = [] if conditions is None else [conditions[index] for index in range(count_value)]
+        self.advanced_conditions = (
+            []
+            if conditions is None
+            else [conditions[index] for index in range(count_value)]
+        )
         self.trigger_configured = True
         return 1
 
-    def _SetAdvTriggerChannelDirections(self, handle, channel_a, channel_b, channel_c, channel_d, ext):
+    def _SetAdvTriggerChannelDirections(
+        self, handle, channel_a, channel_b, channel_c, channel_d, ext
+    ):
         self.advanced_directions = {
             "A": channel_a.value if hasattr(channel_a, "value") else int(channel_a),
             "B": channel_b.value if hasattr(channel_b, "value") else int(channel_b),
@@ -145,14 +157,22 @@ class FakePS:
         }
         return 1
 
-    def _SetPulseWidthQualifier(self, handle, conditions, count, direction, lower, upper, trigger_type):
+    def _SetPulseWidthQualifier(
+        self, handle, conditions, count, direction, lower, upper, trigger_type
+    ):
         count_value = count.value if hasattr(count, "value") else int(count)
-        direction_value = direction.value if hasattr(direction, "value") else int(direction)
+        direction_value = (
+            direction.value if hasattr(direction, "value") else int(direction)
+        )
         lower_value = lower.value if hasattr(lower, "value") else int(lower)
         upper_value = upper.value if hasattr(upper, "value") else int(upper)
-        type_value = trigger_type.value if hasattr(trigger_type, "value") else int(trigger_type)
+        type_value = (
+            trigger_type.value if hasattr(trigger_type, "value") else int(trigger_type)
+        )
         self.pulse_width_args = {
-            "conditions": [] if conditions is None else [conditions[index] for index in range(count_value)],
+            "conditions": []
+            if conditions is None
+            else [conditions[index] for index in range(count_value)],
             "direction": direction_value,
             "lower": lower_value,
             "upper": upper_value,
@@ -160,7 +180,9 @@ class FakePS:
         }
         return 1
 
-    def run_block(self, device, pretrig, sample_count, timebase_id, oversample, segment_index):
+    def run_block(
+        self, device, pretrig, sample_count, timebase_id, oversample, segment_index
+    ):
         return 0.01
 
     def is_ready(self, device) -> bool:
@@ -205,9 +227,13 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(self.window.state.custom_channel.source_channel, "A")
         self.assertTrue(self.window.state.custom_channel.show_source_channel)
         self.assertEqual(self.window.state.custom_channel.operation, "Signal smoother")
-        self.assertEqual(self.window.state.custom_channel.smoothing_method, "moving_average")
+        self.assertEqual(
+            self.window.state.custom_channel.smoothing_method, "moving_average"
+        )
         self.assertEqual(self.window.state.custom_channel.smoothing_span, 11)
-        self.assertEqual(self.window.waveform_history_control.value_label.text(), "0 of 0")
+        self.assertEqual(
+            self.window.waveform_history_control.value_label.text(), "0 of 0"
+        )
         self.assertFalse(self.window.waveform_history_control.minus_button.isEnabled())
         self.assertFalse(self.window.waveform_history_control.plus_button.isEnabled())
 
@@ -256,7 +282,9 @@ class MainWindowTests(unittest.TestCase):
         self.window.set_custom_channel_method("savitzky_golay")
         self.window.set_custom_channel_strength(21)
 
-        self.assertEqual(self.window.state.custom_channel.smoothing_method, "savitzky_golay")
+        self.assertEqual(
+            self.window.state.custom_channel.smoothing_method, "savitzky_golay"
+        )
         self.assertEqual(self.window.state.custom_channel.smoothing_span, 21)
 
     def test_turn_custom_channel_off_disables_it_and_resets_offset(self) -> None:
@@ -276,7 +304,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.assertEqual(self.window.state.custom_channel.color_hex, "#d97706")
 
-    def test_waveform_canvas_builds_custom_smoothed_trace_from_selected_source(self) -> None:
+    def test_waveform_canvas_builds_custom_smoothed_trace_from_selected_source(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         state = ScopeState()
         state.channel_b.enabled = True
@@ -306,7 +336,9 @@ class MainWindowTests(unittest.TestCase):
         )
         self.assertEqual(source_state.name, "Custom")
 
-    def test_waveform_canvas_caches_custom_smoothed_trace_until_frame_or_state_changes(self) -> None:
+    def test_waveform_canvas_caches_custom_smoothed_trace_until_frame_or_state_changes(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         state = ScopeState()
         state.channel_a.enabled = True
@@ -326,7 +358,9 @@ class MainWindowTests(unittest.TestCase):
         )
         canvas.set_frame(frame)
 
-        with patch("picowave.ui.canvas.apply_smoothing_method", wraps=apply_smoothing_method) as wrapped:
+        with patch(
+            "picowave.ui.canvas.apply_smoothing_method", wraps=apply_smoothing_method
+        ) as wrapped:
             first = canvas._custom_channel_volts()
             second = canvas._custom_channel_volts()
 
@@ -379,7 +413,9 @@ class MainWindowTests(unittest.TestCase):
         self.window.refresh_connect_dialog_devices()
 
         self.assertEqual(self.window.connect_dialog.device_list.count(), 1)
-        self.assertEqual(self.window.connect_dialog.device_list.item(0).text(), "2204A [TEST123]")
+        self.assertEqual(
+            self.window.connect_dialog.device_list.item(0).text(), "2204A [TEST123]"
+        )
 
     def test_scope_front_status_tracks_enabled_channels(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
@@ -415,10 +451,14 @@ class MainWindowTests(unittest.TestCase):
     def test_annotation_button_shows_active_state_when_annotations_exist(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
-        self.window.global_annotations.append(AnnotationStroke(points=[(0.1, 0.1), (0.4, 0.1)], color_hex="#ef3340"))
+        self.window.global_annotations.append(
+            AnnotationStroke(points=[(0.1, 0.1), (0.4, 0.1)], color_hex="#ef3340")
+        )
         self.window._sync_ui()
 
-        self.assertTrue(self.window.waveform_canvas.annotation_button.property("active"))
+        self.assertTrue(
+            self.window.waveform_canvas.annotation_button.property("active")
+        )
 
     def test_toggle_running_auto_enables_channel_a_when_needed(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
@@ -429,9 +469,13 @@ class MainWindowTests(unittest.TestCase):
 
         self.assertTrue(self.window.state.running)
         self.assertTrue(self.window.state.channel_a.enabled)
-        self.assertIn("Channel A enabled automatically", self.window.connection_label.text())
+        self.assertIn(
+            "Channel A enabled automatically", self.window.connection_label.text()
+        )
 
-    def test_toggle_running_shows_visual_feedback_for_invalid_mode_timing_combo(self) -> None:
+    def test_toggle_running_shows_visual_feedback_for_invalid_mode_timing_combo(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
         self.window.connect_scope()
         self.window.set_channel_voltage("A", 1.0)
@@ -482,7 +526,9 @@ class MainWindowTests(unittest.TestCase):
         self.assertFalse(self.window.state.channel_a.enabled)
         self.assertFalse(self.window.state.running)
 
-    def test_channel_strip_keeps_selected_range_text_when_probe_scale_changes(self) -> None:
+    def test_channel_strip_keeps_selected_range_text_when_probe_scale_changes(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
         self.window.set_channel_voltage("A", 10.0)
@@ -497,7 +543,10 @@ class MainWindowTests(unittest.TestCase):
 
         self.window.set_channel_probe_scale("A", 20)
 
-        self.assertEqual(channel_voltage_options(self.window.state.channel_a), [1.0, 2.0, 4.0, 10.0, 20.0, 40.0, 100.0, 200.0, 400.0])
+        self.assertEqual(
+            channel_voltage_options(self.window.state.channel_a),
+            [1.0, 2.0, 4.0, 10.0, 20.0, 40.0, 100.0, 200.0, 400.0],
+        )
 
     def test_timing_controls_update_state(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
@@ -513,7 +562,9 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(format_time_per_div(2000.0), "2000 s /div")
         self.assertEqual(format_time_per_div(5000.0), "5000 s /div")
 
-    def test_timing_step_buttons_pick_max_available_sample_rate_for_new_timebase(self) -> None:
+    def test_timing_step_buttons_pick_max_available_sample_rate_for_new_timebase(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
         self.window.set_timebase_value(0.1)
@@ -531,7 +582,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.assertEqual(self.window._max_sample_rate_for_timebase(5000.0), 100_000)
 
-    def test_set_timebase_value_clamps_invalid_sample_rate_to_current_mode_max(self) -> None:
+    def test_set_timebase_value_clamps_invalid_sample_rate_to_current_mode_max(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
         self.window.set_acquisition_mode("Block")
@@ -540,7 +593,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.assertEqual(self.window.state.sample_rate_hz, 5_000)
 
-    def test_switching_mode_clamps_invalid_sample_rate_to_current_mode_max(self) -> None:
+    def test_switching_mode_clamps_invalid_sample_rate_to_current_mode_max(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
         self.window.set_acquisition_mode("Fast streaming")
@@ -590,15 +645,21 @@ class MainWindowTests(unittest.TestCase):
 
     def test_clear_current_annotations_respects_scope(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
-        self.window.waveform_annotations[0] = [AnnotationStroke(points=[(0.1, 0.1), (0.2, 0.2)], color_hex="#1e73be")]
-        self.window.global_annotations = [AnnotationStroke(points=[(0.3, 0.3), (0.4, 0.4)], color_hex="#ef3340")]
+        self.window.waveform_annotations[0] = [
+            AnnotationStroke(points=[(0.1, 0.1), (0.2, 0.2)], color_hex="#1e73be")
+        ]
+        self.window.global_annotations = [
+            AnnotationStroke(points=[(0.3, 0.3), (0.4, 0.4)], color_hex="#ef3340")
+        ]
 
         self.window.set_annotation_scope("This capture")
         self.window.clear_current_annotations()
         self.assertEqual(self.window.waveform_annotations[0], [])
         self.assertEqual(len(self.window.global_annotations), 1)
 
-        self.window.waveform_annotations[0] = [AnnotationStroke(points=[(0.1, 0.1), (0.2, 0.2)], color_hex="#1e73be")]
+        self.window.waveform_annotations[0] = [
+            AnnotationStroke(points=[(0.1, 0.1), (0.2, 0.2)], color_hex="#1e73be")
+        ]
         self.window.set_annotation_scope("All captures")
         self.window.clear_current_annotations()
         self.assertEqual(len(self.window.global_annotations), 0)
@@ -621,7 +682,9 @@ class MainWindowTests(unittest.TestCase):
         self.window._sync_ui()
 
         off_button = None
-        for button in self.window.selection_panel.findChildren(type(self.window.about_button)):
+        for button in self.window.selection_panel.findChildren(
+            type(self.window.about_button)
+        ):
             if button.objectName() == "selectorOffButton":
                 off_button = button
                 break
@@ -649,8 +712,12 @@ class MainWindowTests(unittest.TestCase):
         self.window.set_timebase_value(TIME_PER_DIV_OPTIONS[15])
         self.window.set_sample_rate_value(SAMPLE_RATE_OPTIONS[2])
 
-        self.assertEqual(self.window.timing_control.timebase_value_label.text(), "20 ms /div")
-        self.assertEqual(self.window.timing_control.sample_rate_value_label.text(), "5 kS/s")
+        self.assertEqual(
+            self.window.timing_control.timebase_value_label.text(), "20 ms /div"
+        )
+        self.assertEqual(
+            self.window.timing_control.sample_rate_value_label.text(), "5 kS/s"
+        )
 
     def test_timing_selector_uses_timebase_and_sample_rate_tabs(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
@@ -666,7 +733,9 @@ class MainWindowTests(unittest.TestCase):
                     widget = item.widget()
                     child_layout = item.layout()
                     if widget is not None:
-                        for child in widget.findChildren(type(self.window.about_button)):
+                        for child in widget.findChildren(
+                            type(self.window.about_button)
+                        ):
                             texts.append(child.text())
                     elif child_layout is not None:
                         walk(child_layout)
@@ -676,7 +745,9 @@ class MainWindowTests(unittest.TestCase):
 
         segment_buttons = [
             button
-            for button in self.window.selection_panel.findChildren(type(self.window.about_button))
+            for button in self.window.selection_panel.findChildren(
+                type(self.window.about_button)
+            )
             if button.objectName() == "selectorSegmentButton"
         ]
         segment_texts = [button.text() for button in segment_buttons]
@@ -721,7 +792,9 @@ class MainWindowTests(unittest.TestCase):
 
         segment_buttons = [
             button
-            for button in self.window.selection_panel.findChildren(type(self.window.about_button))
+            for button in self.window.selection_panel.findChildren(
+                type(self.window.about_button)
+            )
             if button.objectName() == "selectorSegmentButton"
         ]
         for button in segment_buttons:
@@ -732,8 +805,14 @@ class MainWindowTests(unittest.TestCase):
         self.app.processEvents()
 
         compatible_button = None
-        for button in self.window.selection_panel.findChildren(type(self.window.about_button)):
-            if button.objectName() == "selectorOptionButton" and button.text() == "1 MS/s" and button.isEnabled():
+        for button in self.window.selection_panel.findChildren(
+            type(self.window.about_button)
+        ):
+            if (
+                button.objectName() == "selectorOptionButton"
+                and button.text() == "1 MS/s"
+                and button.isEnabled()
+            ):
                 compatible_button = button
                 break
 
@@ -808,28 +887,29 @@ class MainWindowTests(unittest.TestCase):
 
         self.window.select_trigger_panel()
         self.window.set_trigger_mode("Auto")
-        self.window.set_trigger_type("Window")
+        self.window.set_trigger_type("Simple edge")
         self.window.set_trigger_source("B")
-        self.window.set_trigger_direction("Outside")
-        self.window.adjust_trigger_lower_level(1)
-        self.window.adjust_trigger_upper_level(1)
+        self.window.set_trigger_direction("Rising")
+        self.window.adjust_trigger_level(1)
         self.window.adjust_pre_trigger_percent(-1)
 
         self.assertEqual(self.window.selected_panel, ("trigger", None))
         self.assertEqual(self.window.state.trigger.mode, "Auto")
-        self.assertEqual(self.window.state.trigger.trigger_type, "Window")
+        self.assertEqual(self.window.state.trigger.trigger_type, "Simple edge")
         self.assertEqual(self.window.state.trigger.source, "B")
-        self.assertEqual(self.window.state.trigger.direction, "Outside")
+        self.assertEqual(self.window.state.trigger.direction, "Rising")
         self.assertEqual(self.window.state.trigger.pre_trigger_percent, 40)
-        self.assertIn("Auto Window", self.window.trigger_control.value_label.text())
+        self.assertIn(
+            "Auto Simple edge", self.window.trigger_control.value_label.text()
+        )
 
     def test_trigger_none_resets_trigger_state(self) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
 
         self.window.set_trigger_mode("Auto")
-        self.window.set_trigger_type("Window")
+        self.window.set_trigger_type("Simple edge")
         self.window.set_trigger_source("B")
-        self.window.set_trigger_direction("Outside")
+        self.window.set_trigger_direction("Rising")
         self.window.adjust_pre_trigger_percent(-1)
         self.window.set_trigger_mode("None")
 
@@ -866,7 +946,9 @@ class MainWindowTests(unittest.TestCase):
         self.assertIs(self.window.waveform_canvas.frame, frame)
         self.assertEqual(self.window.history[-1], frame)
         self.assertIn("2204A connected", self.window.connection_label.text())
-        self.assertEqual(self.window.waveform_history_control.value_label.text(), "1 of 1")
+        self.assertEqual(
+            self.window.waveform_history_control.value_label.text(), "1 of 1"
+        )
         self.assertTrue(self.window.waveform_history_control.minus_button.isEnabled())
         self.assertTrue(self.window.waveform_history_control.plus_button.isEnabled())
 
@@ -878,7 +960,9 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(self.window.selected_panel, ("waveform", None))
         self.assertFalse(self.window.selection_panel.isHidden())
 
-    def test_waveform_preview_strip_only_shows_with_panel_and_saved_waveforms(self) -> None:
+    def test_waveform_preview_strip_only_shows_with_panel_and_saved_waveforms(
+        self,
+    ) -> None:
         self.window = MainWindow(controller=FakeController(), autostart_worker=False)
         frame = CaptureFrame(
             times=np.array([0.0, 1e-6, 2e-6], dtype=np.float32),
@@ -939,7 +1023,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.window.set_timebase_value(10e-3)
 
-        self.assertEqual(self.window.waveform_history_control.value_label.text(), "0 of 0")
+        self.assertEqual(
+            self.window.waveform_history_control.value_label.text(), "0 of 0"
+        )
         self.assertEqual(len(self.window.history), 1)
         self.assertEqual(self.window.history_index, 0)
         self.assertEqual(self.window.history[0].sample_count, 0)
@@ -963,7 +1049,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.window.set_acquisition_mode("Fast streaming")
 
-        self.assertEqual(self.window.waveform_history_control.value_label.text(), "0 of 0")
+        self.assertEqual(
+            self.window.waveform_history_control.value_label.text(), "0 of 0"
+        )
         self.assertEqual(len(self.window.history), 1)
         self.assertEqual(self.window.history[0].sample_count, 0)
 
@@ -986,7 +1074,9 @@ class MainWindowTests(unittest.TestCase):
 
         self.window.set_channel_voltage("A", 2.0)
 
-        self.assertEqual(self.window.waveform_history_control.value_label.text(), "0 of 0")
+        self.assertEqual(
+            self.window.waveform_history_control.value_label.text(), "0 of 0"
+        )
         self.assertEqual(len(self.window.history), 1)
         self.assertEqual(self.window.history[0].sample_count, 0)
 
@@ -1138,13 +1228,17 @@ class ControllerTests(unittest.TestCase):
 
         self.assertIs(logger, APP_LOGGER)
         self.assertTrue(os.path.isdir(LOG_DIR))
-        self.assertTrue(any(getattr(handler, "baseFilename", "") == LOG_FILE for handler in logger.handlers))
+        self.assertTrue(
+            any(
+                getattr(handler, "baseFilename", "") == LOG_FILE
+                for handler in logger.handlers
+            )
+        )
 
     def test_classify_sample_rates_groups_modes(self) -> None:
         available, compatible, unavailable = classify_sample_rates(1.0, "Block", 1)
 
         self.assertEqual(available, [])
-        self.assertIn(1_000, compatible["Compatible streaming"])
         self.assertIn(5_000, compatible["Fast streaming"])
         self.assertIn(1_000_000, unavailable)
 
@@ -1184,15 +1278,22 @@ class ControllerTests(unittest.TestCase):
             },
             clear=False,
         ):
-            with patch("picowave.controller.os.path.isdir") as mock_isdir, patch("picowave.controller.os.path.isfile") as mock_isfile:
+            with (
+                patch("picowave.controller.os.path.isdir") as mock_isdir,
+                patch("picowave.controller.os.path.isfile") as mock_isfile,
+            ):
                 mock_isdir.side_effect = lambda path: path == path_dir
-                mock_isfile.side_effect = lambda path: path == os.path.join(path_dir, "ps2000.dll")
+                mock_isfile.side_effect = lambda path: (
+                    path == os.path.join(path_dir, "ps2000.dll")
+                )
 
                 candidates = controller._candidate_sdk_dirs()
 
         self.assertEqual(candidates, [path_dir])
 
-    def test_choose_block_capture_plan_reduces_sample_count_until_timebase_is_valid(self) -> None:
+    def test_choose_block_capture_plan_reduces_sample_count_until_timebase_is_valid(
+        self,
+    ) -> None:
         controller = Pico2204AController()
         attempted_counts = []
 
@@ -1215,11 +1316,13 @@ class ControllerTests(unittest.TestCase):
         controller = Pico2204AController()
         controller._device = FakeDevice()
         controller._ps = FakePS()
-        controller._channel_config = lambda name, enabled, coupling, range_volts: SimpleNamespace(
-            name=name,
-            enabled=enabled,
-            coupling=coupling,
-            range_volts=range_volts,
+        controller._channel_config = lambda name, enabled, coupling, range_volts: (
+            SimpleNamespace(
+                name=name,
+                enabled=enabled,
+                coupling=coupling,
+                range_volts=range_volts,
+            )
         )
         controller._choose_timebase = lambda sample_count, target_span: SimpleNamespace(
             timebase_id=7,
@@ -1234,8 +1337,12 @@ class ControllerTests(unittest.TestCase):
 
         frame = controller._capture_block_mode(settings)
 
-        np.testing.assert_allclose(frame.channel_a, np.array([0.0, 0.5, -0.5], dtype=np.float32))
-        np.testing.assert_allclose(frame.channel_b, np.array([5.0, 0.0, -5.0], dtype=np.float32))
+        np.testing.assert_allclose(
+            frame.channel_a, np.array([0.0, 0.5, -0.5], dtype=np.float32)
+        )
+        np.testing.assert_allclose(
+            frame.channel_b, np.array([5.0, 0.0, -5.0], dtype=np.float32)
+        )
         self.assertEqual(frame.sample_rate_hz, 1_000_000)
         self.assertEqual(frame.connection_label, "2204A [TEST123]")
         self.assertTrue(controller._ps.trigger_configured)
@@ -1262,7 +1369,9 @@ class ControllerTests(unittest.TestCase):
             1_000_000,
         )
 
-        np.testing.assert_allclose(frame.channel_a, np.array([0.0, -5.0, 5.0], dtype=np.float32))
+        np.testing.assert_allclose(
+            frame.channel_a, np.array([0.0, -5.0, 5.0], dtype=np.float32)
+        )
         self.assertEqual(frame.y_range_volts, 10.0)
 
     def test_apply_trigger_configures_simple_edge_trigger(self) -> None:
@@ -1347,7 +1456,9 @@ class ControllerTests(unittest.TestCase):
             1_000_000,
         )
 
-        np.testing.assert_array_equal(frame.channel_a_overrange, np.array([0, 1, -1], dtype=np.int8))
+        np.testing.assert_array_equal(
+            frame.channel_a_overrange, np.array([0, 1, -1], dtype=np.int8)
+        )
 
     def test_build_frame_preserves_captured_time_axis(self) -> None:
         controller = Pico2204AController()
@@ -1371,71 +1482,11 @@ class ControllerTests(unittest.TestCase):
         self.assertAlmostEqual(frame.times[-1], 30.72e-6)
         self.assertAlmostEqual(frame.sample_rate_hz, 97_656.25)
 
-    def test_apply_trigger_configures_window_trigger(self) -> None:
-        controller = Pico2204AController()
-        controller._device = FakeDevice()
-        controller._ps = FakePS()
-        settings = ScopeState()
-        settings.channel_a.enabled = True
-        settings.trigger.mode = "Auto"
-        settings.trigger.trigger_type = "Window"
-        settings.trigger.source = "A"
-        settings.trigger.direction = "Inside"
-        settings.trigger.lower_level_volts = -0.2
-        settings.trigger.upper_level_volts = 0.4
-
-        controller._apply_trigger(settings, {"A": 1.0, "B": 5.0})
-
-        self.assertEqual(len(controller._ps.advanced_properties), 1)
-        self.assertEqual(controller._ps.advanced_properties[0].thresholdMode, PS2000_THRESHOLD_MODE["Window"])
-        self.assertEqual(controller._ps.advanced_conditions[0].channelA, PS2000_TRIGGER_STATE["True"])
-        self.assertTrue(controller._ps.trigger_configured)
-
-    def test_apply_trigger_configures_logic_trigger(self) -> None:
-        controller = Pico2204AController()
-        controller._device = FakeDevice()
-        controller._ps = FakePS()
-        settings = ScopeState()
-        settings.channel_a.enabled = True
-        settings.channel_b.enabled = True
-        settings.trigger.mode = "Repeat"
-        settings.trigger.trigger_type = "Logic"
-        settings.trigger.logic_a_state = "True"
-        settings.trigger.logic_b_state = "False"
-
-        controller._apply_trigger(settings, {"A": 1.0, "B": 5.0})
-
-        self.assertEqual(len(controller._ps.advanced_properties), 2)
-        self.assertEqual(controller._ps.advanced_conditions[0].channelA, PS2000_TRIGGER_STATE["True"])
-        self.assertEqual(controller._ps.advanced_conditions[0].channelB, PS2000_TRIGGER_STATE["False"])
-        self.assertTrue(controller._ps.trigger_configured)
-
-    def test_apply_trigger_configures_pulse_width_trigger(self) -> None:
-        controller = Pico2204AController()
-        controller._device = FakeDevice()
-        controller._ps = FakePS()
-        settings = ScopeState()
-        settings.channel_a.enabled = True
-        settings.trigger.mode = "Auto"
-        settings.trigger.trigger_type = "Pulse width"
-        settings.trigger.source = "A"
-        settings.trigger.direction = "Rising"
-        settings.trigger.pulse_width_type = "In range"
-        settings.trigger.pulse_width_lower = 30
-        settings.trigger.pulse_width_upper = 60
-
-        controller._apply_trigger(settings, {"A": 1.0, "B": 5.0})
-
-        self.assertIsNotNone(controller._ps.pulse_width_args)
-        self.assertEqual(controller._ps.pulse_width_args["lower"], 30)
-        self.assertEqual(controller._ps.pulse_width_args["upper"], 60)
-
     def test_capture_dispatches_by_mode(self) -> None:
         controller = Pico2204AController()
         controller._device = object()
         controller._connect_if_needed = lambda force=False: None
         block_frame = build_empty_frame(ScopeState(), "Block", "Block backend")
-        compatible_frame = build_empty_frame(ScopeState(), "Compatible streaming", "Streaming backend")
         fast_frame = build_empty_frame(ScopeState(), "Fast streaming", "Fast backend")
         calls = []
 
@@ -1443,27 +1494,19 @@ class ControllerTests(unittest.TestCase):
             calls.append("block")
             return block_frame
 
-        def compatible(settings):
-            calls.append("compatible")
-            return compatible_frame
-
         def fast(settings):
             calls.append("fast")
             return fast_frame
 
         controller._capture_block_mode = block
-        controller._capture_compatible_streaming = compatible
         controller._capture_fast_streaming = fast
 
         settings = ScopeState()
         self.assertIs(controller.capture(settings), block_frame)
 
-        settings.acquisition_mode = "Compatible streaming"
-        self.assertIs(controller.capture(settings), compatible_frame)
-
         settings.acquisition_mode = "Fast streaming"
         self.assertIs(controller.capture(settings), fast_frame)
-        self.assertEqual(calls, ["block", "compatible", "fast"])
+        self.assertEqual(calls, ["block", "fast"])
 
     def test_capture_error_does_not_disconnect_device(self) -> None:
         controller = Pico2204AController()
@@ -1481,10 +1524,14 @@ class ControllerTests(unittest.TestCase):
 
         self.assertTrue(controller.is_connected)
 
-    def test_fast_streaming_settings_keep_raw_aggregation_for_extended_record_lengths(self) -> None:
+    def test_fast_streaming_settings_keep_raw_aggregation_for_extended_record_lengths(
+        self,
+    ) -> None:
         controller = Pico2204AController()
 
-        aggregate, overview_size = controller._fast_streaming_settings(FAST_STREAMING_MAX_SAMPLES)
+        aggregate, overview_size = controller._fast_streaming_settings(
+            FAST_STREAMING_MAX_SAMPLES
+        )
 
         self.assertEqual(aggregate, 1)
         self.assertEqual(overview_size, FAST_STREAMING_MAX_SAMPLES)
@@ -1503,7 +1550,9 @@ class ControllerTests(unittest.TestCase):
         controller = Pico2204AController()
         raw = np.array([0, 0, 0, 50, 50, 50], dtype=np.int16)
 
-        crossing = controller._find_simple_edge_trigger_index(raw, 25, "Rising", hint_index=1)
+        crossing = controller._find_simple_edge_trigger_index(
+            raw, 25, "Rising", hint_index=1
+        )
 
         self.assertEqual(crossing, 3)
 
@@ -1617,14 +1666,22 @@ class ControllerTests(unittest.TestCase):
         controller._apply_channels = lambda settings: {"A": 1.0}
         controller._apply_trigger = lambda settings, active_ranges: None
         controller._interval_to_ps2000_units = lambda interval_s: (1, 0, 10e-6)
-        controller._fast_streaming_capture_window = lambda settings, actual_interval_s: (1001, 1251)
+        controller._fast_streaming_capture_window = lambda settings, actual_interval_s: (
+            1001,
+            1251,
+        )
         recorded_sample_counts = []
         build_frame_calls = {}
         controller._fast_streaming_start_time_ns = (
-            lambda settings, sample_count, actual_interval_s, triggered: recorded_sample_counts.append(sample_count) or 0.0
+            lambda settings, sample_count, actual_interval_s, triggered: (
+                recorded_sample_counts.append(sample_count) or 0.0
+            )
         )
         controller._software_realign_fast_streaming_trigger = (
-            lambda settings, active_ranges, raw_buffers, captured, driver_trigger_index: (driver_trigger_index, "driver")
+            lambda settings, active_ranges, raw_buffers, captured, driver_trigger_index: (
+                driver_trigger_index,
+                "driver",
+            )
         )
         controller._build_frame = (
             lambda settings, times, raw_data, active_ranges, source_label, sample_rate_hz, **kwargs: (
@@ -1652,7 +1709,9 @@ class ControllerTests(unittest.TestCase):
     def test_empty_frame_contains_both_channel_buffers(self) -> None:
         settings = ScopeState()
 
-        frame = build_empty_frame(settings, "Hardware", "Connect a PicoScope 2204A to begin capture.")
+        frame = build_empty_frame(
+            settings, "Hardware", "Connect a PicoScope 2204A to begin capture."
+        )
 
         self.assertEqual(frame.channel_a.size, 0)
         self.assertEqual(frame.channel_b.size, 0)
@@ -1670,7 +1729,9 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_frame(build_empty_frame(ScopeState(), "Hardware", "Idle"))
         waveform_annotations: list[AnnotationStroke] = []
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Pen", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Pen", color_hex="#1e73be")
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -1701,14 +1762,18 @@ class WaveformCanvasTests(unittest.TestCase):
         self.assertEqual(len(waveform_annotations), 1)
         self.assertGreaterEqual(len(waveform_annotations[0].points), 2)
 
-    def test_pen_click_without_visible_movement_does_not_create_ghost_line(self) -> None:
+    def test_pen_click_without_visible_movement_does_not_create_ghost_line(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         canvas.resize(800, 600)
         canvas.set_state(ScopeState())
         canvas.set_frame(build_empty_frame(ScopeState(), "Hardware", "Idle"))
         waveform_annotations: list[AnnotationStroke] = []
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Pen", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Pen", color_hex="#1e73be")
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -1734,19 +1799,33 @@ class WaveformCanvasTests(unittest.TestCase):
     def test_annotation_tool_updates_canvas_cursor(self) -> None:
         canvas = WaveformCanvas()
 
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be")
+        )
         self.assertEqual(canvas.cursor().shape(), Qt.CursorShape.IBeamCursor)
 
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Off", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Off", color_hex="#1e73be")
+        )
         self.assertEqual(canvas.cursor().shape(), Qt.CursorShape.ArrowCursor)
 
-    def test_eraser_can_remove_waveform_annotations_while_global_scope_is_selected(self) -> None:
+    def test_eraser_can_remove_waveform_annotations_while_global_scope_is_selected(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         canvas.resize(800, 600)
-        waveform_annotations = [AnnotationStroke(points=[(0.2, 0.2), (0.3, 0.2), (0.4, 0.2)], color_hex="#1e73be")]
-        global_annotations = [AnnotationStroke(points=[(0.6, 0.2), (0.7, 0.2)], color_hex="#ef3340")]
+        waveform_annotations = [
+            AnnotationStroke(
+                points=[(0.2, 0.2), (0.3, 0.2), (0.4, 0.2)], color_hex="#1e73be"
+            )
+        ]
+        global_annotations = [
+            AnnotationStroke(points=[(0.6, 0.2), (0.7, 0.2)], color_hex="#ef3340")
+        ]
         canvas.set_annotations(waveform_annotations, global_annotations)
-        canvas.set_annotation_settings(AnnotationSettings(scope="All captures", tool="Eraser", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="All captures", tool="Eraser", color_hex="#1e73be")
+        )
 
         erase_point = canvas._normalized_to_plot((0.3, 0.2), canvas._plot_rect())
         canvas._erase_at(erase_point, canvas._plot_rect())
@@ -1759,12 +1838,20 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.resize(800, 600)
         waveform_annotations = [
             AnnotationStroke(
-                points=[(0.20, 0.20), (0.24, 0.20), (0.28, 0.20), (0.32, 0.20), (0.36, 0.20)],
+                points=[
+                    (0.20, 0.20),
+                    (0.24, 0.20),
+                    (0.28, 0.20),
+                    (0.32, 0.20),
+                    (0.36, 0.20),
+                ],
                 color_hex="#1e73be",
             )
         ]
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Eraser", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Eraser", color_hex="#1e73be")
+        )
 
         erase_point = canvas._normalized_to_plot((0.28, 0.20), canvas._plot_rect())
         canvas._erase_at(erase_point, canvas._plot_rect())
@@ -1772,14 +1859,22 @@ class WaveformCanvasTests(unittest.TestCase):
         self.assertEqual(len(waveform_annotations), 2)
         self.assertTrue(all(len(item.points) >= 2 for item in waveform_annotations))
 
-    def test_eraser_can_remove_text_annotation_by_clicking_inside_text_box(self) -> None:
+    def test_eraser_can_remove_text_annotation_by_clicking_inside_text_box(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         canvas.resize(800, 600)
-        waveform_annotations = [AnnotationText(position=(0.25, 0.25), text="Test", color_hex="#1e73be")]
+        waveform_annotations = [
+            AnnotationText(position=(0.25, 0.25), text="Test", color_hex="#1e73be")
+        ]
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="All captures", tool="Eraser", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="All captures", tool="Eraser", color_hex="#1e73be")
+        )
 
-        text_rect = canvas._annotation_text_rect(waveform_annotations[0], canvas._plot_rect())
+        text_rect = canvas._annotation_text_rect(
+            waveform_annotations[0], canvas._plot_rect()
+        )
         canvas._erase_at(text_rect.center(), canvas._plot_rect())
 
         self.assertEqual(len(waveform_annotations), 0)
@@ -1791,7 +1886,9 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_frame(build_empty_frame(ScopeState(), "Hardware", "Idle"))
         waveform_annotations = []
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be")
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -1805,9 +1902,21 @@ class WaveformCanvasTests(unittest.TestCase):
         self.assertIsNotNone(canvas._active_text_box)
         self.assertEqual(len(waveform_annotations), 0)
 
-        canvas.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key_H, Qt.KeyboardModifier.NoModifier, "H"))
-        canvas.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key_I, Qt.KeyboardModifier.NoModifier, "i"))
-        canvas.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key_Return, Qt.KeyboardModifier.NoModifier))
+        canvas.keyPressEvent(
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key_H, Qt.KeyboardModifier.NoModifier, "H"
+            )
+        )
+        canvas.keyPressEvent(
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key_I, Qt.KeyboardModifier.NoModifier, "i"
+            )
+        )
+        canvas.keyPressEvent(
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key_Return, Qt.KeyboardModifier.NoModifier
+            )
+        )
 
         self.assertIsNone(canvas._active_text_box)
         self.assertEqual(len(waveform_annotations), 1)
@@ -1820,7 +1929,9 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_frame(build_empty_frame(ScopeState(), "Hardware", "Idle"))
         waveform_annotations = []
         canvas.set_annotations(waveform_annotations, [])
-        canvas.set_annotation_settings(AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be"))
+        canvas.set_annotation_settings(
+            AnnotationSettings(scope="This capture", tool="Text", color_hex="#1e73be")
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -1830,8 +1941,16 @@ class WaveformCanvasTests(unittest.TestCase):
             Qt.KeyboardModifier.NoModifier,
         )
         canvas.mousePressEvent(press)
-        canvas.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key_A, Qt.KeyboardModifier.NoModifier, "A"))
-        canvas.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key_Escape, Qt.KeyboardModifier.NoModifier))
+        canvas.keyPressEvent(
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key_A, Qt.KeyboardModifier.NoModifier, "A"
+            )
+        )
+        canvas.keyPressEvent(
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key_Escape, Qt.KeyboardModifier.NoModifier
+            )
+        )
 
         self.assertIsNone(canvas._active_text_box)
         self.assertEqual(len(waveform_annotations), 0)
@@ -1844,7 +1963,9 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_state(state)
         canvas.set_frame(build_empty_frame(state, "Hardware", "Idle"))
         changes = []
-        canvas.vertical_offset_changed.connect(lambda name, offset: changes.append((name, offset)))
+        canvas.vertical_offset_changed.connect(
+            lambda name, offset: changes.append((name, offset))
+        )
 
         axis_rect = canvas._channel_axis_drag_rect("A", canvas._plot_rect())
         self.assertIsNotNone(axis_rect)
@@ -1858,7 +1979,10 @@ class WaveformCanvasTests(unittest.TestCase):
         )
         move = QMouseEvent(
             QEvent.Type.MouseMove,
-            QPointF(axis_rect.center().x(), axis_rect.center().y() - (canvas._plot_rect().height() / 5.0)),
+            QPointF(
+                axis_rect.center().x(),
+                axis_rect.center().y() - (canvas._plot_rect().height() / 5.0),
+            ),
             Qt.MouseButton.NoButton,
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.NoModifier,
@@ -1880,7 +2004,9 @@ class WaveformCanvasTests(unittest.TestCase):
         self.assertGreater(changes[-1][1], 0.0)
         self.assertGreater(canvas.state.channel_a.vertical_offset_divs, 0.0)
 
-    def test_vertical_offset_changes_display_position_without_changing_voltage_value(self) -> None:
+    def test_vertical_offset_changes_display_position_without_changing_voltage_value(
+        self,
+    ) -> None:
         canvas = WaveformCanvas()
         canvas.resize(800, 600)
         state = ScopeState()
@@ -1888,10 +2014,26 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_state(state)
 
         plot_rect = canvas._plot_rect()
-        base_y = plot_rect.top() + canvas._channel_y_ratio(0.0, canvas.state.channel_a, channel_display_range(canvas.state.channel_a)) * plot_rect.height()
+        base_y = (
+            plot_rect.top()
+            + canvas._channel_y_ratio(
+                0.0,
+                canvas.state.channel_a,
+                channel_display_range(canvas.state.channel_a),
+            )
+            * plot_rect.height()
+        )
 
         canvas.state.channel_a.vertical_offset_divs = 2.0
-        shifted_y = plot_rect.top() + canvas._channel_y_ratio(0.0, canvas.state.channel_a, channel_display_range(canvas.state.channel_a)) * plot_rect.height()
+        shifted_y = (
+            plot_rect.top()
+            + canvas._channel_y_ratio(
+                0.0,
+                canvas.state.channel_a,
+                channel_display_range(canvas.state.channel_a),
+            )
+            * plot_rect.height()
+        )
 
         self.assertLess(shifted_y, base_y)
 
@@ -1973,7 +2115,9 @@ class WaveformCanvasTests(unittest.TestCase):
 
         axis_rect = canvas._channel_axis_drag_rect("A", canvas._plot_rect())
         canvas._update_hover_cursor(axis_rect.center())
-        canvas._update_hover_cursor(QPointF(canvas._plot_rect().center().x(), canvas._plot_rect().center().y()))
+        canvas._update_hover_cursor(
+            QPointF(canvas._plot_rect().center().x(), canvas._plot_rect().center().y())
+        )
 
         self.assertEqual(canvas.cursor().shape(), Qt.CursorShape.ArrowCursor)
 
@@ -2071,8 +2215,14 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_frame(frame)
         canvas.toggle_zoom_box_mode()
         plot_rect = canvas._plot_rect()
-        start = QPointF(plot_rect.left() + (plot_rect.width() * 0.2), plot_rect.top() + (plot_rect.height() * 0.2))
-        end = QPointF(plot_rect.left() + (plot_rect.width() * 0.7), plot_rect.top() + (plot_rect.height() * 0.8))
+        start = QPointF(
+            plot_rect.left() + (plot_rect.width() * 0.2),
+            plot_rect.top() + (plot_rect.height() * 0.2),
+        )
+        end = QPointF(
+            plot_rect.left() + (plot_rect.width() * 0.7),
+            plot_rect.top() + (plot_rect.height() * 0.8),
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -2283,7 +2433,9 @@ class WaveformCanvasTests(unittest.TestCase):
         self.assertIsNotNone(marker)
 
         nearby_point = QPointF(marker.x() + 12.0, marker.y() + 3.0)
-        self.assertTrue(canvas._trigger_marker_contains(nearby_point, canvas._plot_rect()))
+        self.assertTrue(
+            canvas._trigger_marker_contains(nearby_point, canvas._plot_rect())
+        )
 
     def test_zoom_out_hits_full_horizontal_before_full_reset(self) -> None:
         canvas = WaveformCanvas()
@@ -2346,8 +2498,12 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_state(ScopeState())
         canvas._set_view_range(0.2, 0.6)
         plot_rect = canvas._plot_rect()
-        start = QPointF(plot_rect.left() + (plot_rect.width() * 0.6), plot_rect.center().y())
-        end = QPointF(plot_rect.left() + (plot_rect.width() * 0.3), plot_rect.center().y())
+        start = QPointF(
+            plot_rect.left() + (plot_rect.width() * 0.6), plot_rect.center().y()
+        )
+        end = QPointF(
+            plot_rect.left() + (plot_rect.width() * 0.3), plot_rect.center().y()
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,
@@ -2387,7 +2543,9 @@ class WaveformCanvasTests(unittest.TestCase):
         canvas.set_state(state)
         plot_rect = canvas._plot_rect()
         start = QPointF(plot_rect.center().x(), plot_rect.center().y())
-        end = QPointF(plot_rect.center().x(), plot_rect.center().y() - (plot_rect.height() * 0.2))
+        end = QPointF(
+            plot_rect.center().x(), plot_rect.center().y() - (plot_rect.height() * 0.2)
+        )
 
         press = QMouseEvent(
             QEvent.Type.MouseButtonPress,

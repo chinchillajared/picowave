@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import math
 import time
@@ -22,6 +22,8 @@ from picowave.config import *
 from picowave.helpers import *
 from picowave.models import *
 from picowave.processing import *
+
+
 class ClickableFrame(QFrame):
     clicked = Signal()
 
@@ -32,6 +34,7 @@ class ClickableFrame(QFrame):
 
 
 # Frontend: compact status and summary cards
+
 
 class StatusCard(QFrame):
     def __init__(self) -> None:
@@ -82,7 +85,9 @@ class ScopeCard(QFrame):
         layout.addWidget(rate_title, 0, 2)
         layout.addWidget(self.sample_rate_value, 1, 2)
 
-    def update_content(self, time_per_div: float, sample_count: int, sample_rate_hz: float) -> None:
+    def update_content(
+        self, time_per_div: float, sample_count: int, sample_rate_hz: float
+    ) -> None:
         self.value_label.setText(format_time_per_div(time_per_div))
         self.samples_value.setText(f"{sample_count}")
         self.sample_rate_value.setText(format_sample_rate(sample_rate_hz))
@@ -182,7 +187,11 @@ class WaveformPreviewStrip(QWidget):
         self._page_start = 0
 
     def set_history(self, history: list[CaptureFrame], current_index: int) -> None:
-        self._items = [(index, frame) for index, frame in enumerate(history) if frame.sample_count > 0]
+        self._items = [
+            (index, frame)
+            for index, frame in enumerate(history)
+            if frame.sample_count > 0
+        ]
         self._current_history_index = current_index
         if not self._items:
             self._page_start = 0
@@ -190,21 +199,34 @@ class WaveformPreviewStrip(QWidget):
             return
         self._page_start = int(clamp(self._page_start, 0, self._last_page_start()))
         current_position = next(
-            (index for index, (history_index, _frame) in enumerate(self._items) if history_index == current_index),
+            (
+                index
+                for index, (history_index, _frame) in enumerate(self._items)
+                if history_index == current_index
+            ),
             len(self._items) - 1,
         )
-        if current_position < self._page_start or current_position >= self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE:
-            page_start = (current_position // WAVEFORM_PREVIEW_PAGE_SIZE) * WAVEFORM_PREVIEW_PAGE_SIZE
+        if (
+            current_position < self._page_start
+            or current_position >= self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE
+        ):
+            page_start = (
+                current_position // WAVEFORM_PREVIEW_PAGE_SIZE
+            ) * WAVEFORM_PREVIEW_PAGE_SIZE
             self._page_start = int(clamp(page_start, 0, self._last_page_start()))
         self.update()
 
     def visible_items(self) -> list[tuple[int, CaptureFrame]]:
-        return self._items[self._page_start : self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE]
+        return self._items[
+            self._page_start : self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE
+        ]
 
     def _last_page_start(self) -> int:
         if not self._items:
             return 0
-        return ((len(self._items) - 1) // WAVEFORM_PREVIEW_PAGE_SIZE) * WAVEFORM_PREVIEW_PAGE_SIZE
+        return (
+            (len(self._items) - 1) // WAVEFORM_PREVIEW_PAGE_SIZE
+        ) * WAVEFORM_PREVIEW_PAGE_SIZE
 
     def has_previous_page(self) -> bool:
         return self._page_start > 0
@@ -217,7 +239,9 @@ class WaveformPreviewStrip(QWidget):
         self.update()
 
     def next_page(self) -> None:
-        self._page_start = min(self._last_page_start(), self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE)
+        self._page_start = min(
+            self._last_page_start(), self._page_start + WAVEFORM_PREVIEW_PAGE_SIZE
+        )
         self.update()
 
     def _thumbnail_rects(self) -> list[QRectF]:
@@ -229,13 +253,17 @@ class WaveformPreviewStrip(QWidget):
         rects: list[QRectF] = []
         x = float(outer.left())
         for _index in range(count):
-            rects.append(QRectF(x, float(outer.top()), thumb_width, float(outer.height())))
+            rects.append(
+                QRectF(x, float(outer.top()), thumb_width, float(outer.height()))
+            )
             x += thumb_width + spacing
         return rects
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
-            for rect, (history_index, _frame) in zip(self._thumbnail_rects(), self.visible_items()):
+            for rect, (history_index, _frame) in zip(
+                self._thumbnail_rects(), self.visible_items()
+            ):
                 if rect.contains(event.position()):
                     self.waveform_selected.emit(history_index)
                     break
@@ -264,11 +292,19 @@ class WaveformPreviewStrip(QWidget):
 
             visible_items = self.visible_items()
             for visible_offset, rect in enumerate(self._thumbnail_rects()):
-                item = visible_items[visible_offset] if visible_offset < len(visible_items) else None
+                item = (
+                    visible_items[visible_offset]
+                    if visible_offset < len(visible_items)
+                    else None
+                )
                 history_index = item[0] if item is not None else None
                 frame = item[1] if item is not None else None
                 display_index = self._page_start + visible_offset + 1
-                is_selected = history_index == self._current_history_index if history_index is not None else False
+                is_selected = (
+                    history_index == self._current_history_index
+                    if history_index is not None
+                    else False
+                )
                 border_color = QColor("#1e73be" if is_selected else "#d7dfe7")
                 fill_color = QColor("#f8fbff" if is_selected else "#ffffff")
                 painter.setPen(QPen(border_color, 2.0 if is_selected else 1.0))
@@ -280,24 +316,50 @@ class WaveformPreviewStrip(QWidget):
                 if frame is not None:
                     for column in range(5):
                         x = preview_rect.left() + (preview_rect.width() * column / 4.0)
-                        painter.drawLine(QPointF(x, preview_rect.top()), QPointF(x, preview_rect.bottom()))
+                        painter.drawLine(
+                            QPointF(x, preview_rect.top()),
+                            QPointF(x, preview_rect.bottom()),
+                        )
                     for row in range(4):
                         y = preview_rect.top() + (preview_rect.height() * row / 3.0)
-                        painter.drawLine(QPointF(preview_rect.left(), y), QPointF(preview_rect.right(), y))
+                        painter.drawLine(
+                            QPointF(preview_rect.left(), y),
+                            QPointF(preview_rect.right(), y),
+                        )
                     self._draw_preview_trace(
-                        painter, preview_rect, frame.times, frame.channel_a, QColor("#1e73be"), frame.y_range_volts
+                        painter,
+                        preview_rect,
+                        frame.times,
+                        frame.channel_a,
+                        QColor("#1e73be"),
+                        frame.y_range_volts,
                     )
                     self._draw_preview_trace(
-                        painter, preview_rect, frame.times, frame.channel_b, QColor("#ef3340"), frame.y_range_volts
+                        painter,
+                        preview_rect,
+                        frame.times,
+                        frame.channel_b,
+                        QColor("#ef3340"),
+                        frame.y_range_volts,
                     )
 
                 painter.setPen(
-                    QPen(QColor("#1e73be" if is_selected else "#51657a" if frame is not None else "#9aa3ad"))
+                    QPen(
+                        QColor(
+                            "#1e73be"
+                            if is_selected
+                            else "#51657a"
+                            if frame is not None
+                            else "#9aa3ad"
+                        )
+                    )
                 )
                 painter.setFont(QFont("Segoe UI", 8, QFont.Bold))
                 if frame is not None:
                     painter.drawText(
-                        rect.adjusted(6, 3, -6, -rect.height() + 15), Qt.AlignLeft | Qt.AlignVCenter, str(display_index)
+                        rect.adjusted(6, 3, -6, -rect.height() + 15),
+                        Qt.AlignLeft | Qt.AlignVCenter,
+                        str(display_index),
                     )
         finally:
             painter.end()
@@ -322,7 +384,10 @@ class WaveformPreviewStrip(QWidget):
 
         path = QPainterPath()
         for index, (time_value, volt_value) in enumerate(zip(times_view, volts_view)):
-            x = rect.left() + ((float(time_value) - time_start) / time_span) * rect.width()
+            x = (
+                rect.left()
+                + ((float(time_value) - time_start) / time_span) * rect.width()
+            )
             normalized = 0.5 - (float(volt_value) / (visible_range * 2.4))
             y = rect.top() + clamp(normalized, 0.0, 1.0) * rect.height()
             if index == 0:
@@ -357,7 +422,10 @@ class ScopeFrontStatusWidget(QFrame):
         self._heartbeat_decay_timer.timeout.connect(self._stop_heartbeat_mode)
 
     def set_channel_state(self, a_enabled: bool, b_enabled: bool) -> None:
-        if self._channel_a_enabled == a_enabled and self._channel_b_enabled == b_enabled:
+        if (
+            self._channel_a_enabled == a_enabled
+            and self._channel_b_enabled == b_enabled
+        ):
             return
         self._channel_a_enabled = a_enabled
         self._channel_b_enabled = b_enabled
@@ -365,7 +433,11 @@ class ScopeFrontStatusWidget(QFrame):
 
     def blink_activity(self) -> None:
         now = time.monotonic()
-        interval = now - self._last_activity_at if self._last_activity_at > 0.0 else float("inf")
+        interval = (
+            now - self._last_activity_at
+            if self._last_activity_at > 0.0
+            else float("inf")
+        )
         self._last_activity_at = now
         if interval < 0.12:
             self._start_heartbeat_mode()
@@ -439,7 +511,9 @@ class ScopeFrontStatusWidget(QFrame):
 
             led_center = QPointF(inner_rect.right() - 16, inner_rect.center().y())
             led_color = QColor("#ef3340" if self._blink_on else "#6d3a3f")
-            painter.setPen(QPen(QColor("#ffd7db" if self._blink_on else "#8f6a6f"), 1.0))
+            painter.setPen(
+                QPen(QColor("#ffd7db" if self._blink_on else "#8f6a6f"), 1.0)
+            )
             painter.setBrush(led_color)
             painter.drawEllipse(led_center, 5.0, 5.0)
         finally:
@@ -481,6 +555,7 @@ class ScopeFrontStatusWidget(QFrame):
 
 # Frontend: left corner buttons and strips
 
+
 class ChannelControl(QFrame):
     changed = Signal()
 
@@ -514,7 +589,9 @@ class ChannelControl(QFrame):
         self.body_layout.addWidget(self.title_label, 0, 0)
         self.body_layout.addWidget(self.coupling_label, 0, 1, alignment=Qt.AlignRight)
         self.body_layout.addWidget(self.range_label, 1, 0)
-        self.body_layout.addWidget(self.probe_label, 2, 1, alignment=Qt.AlignRight | Qt.AlignBottom)
+        self.body_layout.addWidget(
+            self.probe_label, 2, 1, alignment=Qt.AlignRight | Qt.AlignBottom
+        )
 
         layout.addWidget(self.body, 1)
 
@@ -560,7 +637,9 @@ class CustomChannelControl(QFrame):
         self.body_layout.addWidget(self.title_label, 0, 0)
         self.body_layout.addWidget(self.source_label, 0, 1, alignment=Qt.AlignRight)
         self.body_layout.addWidget(self.operation_label, 1, 0)
-        self.body_layout.addWidget(self.visibility_label, 2, 1, alignment=Qt.AlignRight | Qt.AlignBottom)
+        self.body_layout.addWidget(
+            self.visibility_label, 2, 1, alignment=Qt.AlignRight | Qt.AlignBottom
+        )
         layout.addWidget(self.body, 1)
 
         self.set_state(custom_state)
@@ -569,8 +648,12 @@ class CustomChannelControl(QFrame):
         self.title_label.setStyleSheet(f"color: {custom_state.color_hex};")
         self.operation_label.setStyleSheet(f"color: {custom_state.color_hex};")
         self.source_label.setText(f"Src {custom_state.source_channel}")
-        self.visibility_label.setText("Show" if custom_state.show_source_channel else "Hide")
-        self.operation_label.setText("Off" if not custom_state.enabled else f"From {custom_state.source_channel}")
+        self.visibility_label.setText(
+            "Show" if custom_state.show_source_channel else "Hide"
+        )
+        self.operation_label.setText(
+            "Off" if not custom_state.enabled else f"From {custom_state.source_channel}"
+        )
         self.body.setStyleSheet(
             f"""
             QFrame#channelBody {{
@@ -744,6 +827,7 @@ class AnnotationControl(QFrame):
 
 # Frontend: right-side contextual editor panels
 
+
 class SelectionPanel(QFrame):
     hide_requested = Signal()
 
@@ -807,7 +891,9 @@ class SelectionPanel(QFrame):
         if current is None or option is None:
             return current == option
         if isinstance(current, float) or isinstance(option, float):
-            return math.isclose(float(current), float(option), rel_tol=1e-12, abs_tol=1e-12)
+            return math.isclose(
+                float(current), float(option), rel_tol=1e-12, abs_tol=1e-12
+            )
         return current == option
 
     def _add_section_label(self, text: str, tone: str = "default") -> None:
@@ -849,7 +935,9 @@ class SelectionPanel(QFrame):
             button.setCheckable(enabled)
             button.setChecked(enabled and is_selected)
             if enabled:
-                button.clicked.connect(lambda _checked=False, value=option: callback(value))
+                button.clicked.connect(
+                    lambda _checked=False, value=option: callback(value)
+                )
                 button.setCursor(Qt.PointingHandCursor)
             else:
                 button.setEnabled(False)
@@ -876,7 +964,9 @@ class SelectionPanel(QFrame):
             button.setChecked(enabled and option == selected_value)
             button.setEnabled(enabled)
             if enabled:
-                button.clicked.connect(lambda _checked=False, value=option: callback(value))
+                button.clicked.connect(
+                    lambda _checked=False, value=option: callback(value)
+                )
             row.addWidget(button)
         self.content_layout.addWidget(row_widget)
 
@@ -929,7 +1019,12 @@ class SelectionPanel(QFrame):
         row.addWidget(info_button)
         self.content_layout.addWidget(row_widget)
 
-    def _add_color_grid(self, selected_color: str, callback, palette: list[tuple[str, str]] | None = None) -> None:
+    def _add_color_grid(
+        self,
+        selected_color: str,
+        callback,
+        palette: list[tuple[str, str]] | None = None,
+    ) -> None:
         palette = palette or ANNOTATION_COLORS
         grid_widget = QWidget()
         grid = QGridLayout(grid_widget)
@@ -946,7 +1041,9 @@ class SelectionPanel(QFrame):
             button.setStyleSheet(
                 f"background: {color_hex}; border: {border_width}px solid {border_color}; border-radius: 9px;"
             )
-            button.clicked.connect(lambda _checked=False, value=color_hex: callback(value))
+            button.clicked.connect(
+                lambda _checked=False, value=color_hex: callback(value)
+            )
             grid.addWidget(button, index // 5, index % 5)
         self.content_layout.addWidget(grid_widget)
 
@@ -958,7 +1055,9 @@ class SelectionPanel(QFrame):
         on_plus,
         enabled: bool = True,
     ) -> None:
-        self._add_section_label(label_text, tone="default" if enabled else "unavailable")
+        self._add_section_label(
+            label_text, tone="default" if enabled else "unavailable"
+        )
         row_widget = QWidget()
         row = QHBoxLayout(row_widget)
         row.setContentsMargins(0, 0, 0, 0)
@@ -1024,7 +1123,9 @@ class SelectionPanel(QFrame):
         self.title.setStyleSheet(f"color: {channel_state.color_hex};")
         self._clear_content()
         tone = "channelA" if channel_state.name == "A" else "channelB"
-        self._add_segmented_options(CHANNEL_PANEL_TABS, channel_state.panel_tab, on_tab_select, tone=tone)
+        self._add_segmented_options(
+            CHANNEL_PANEL_TABS, channel_state.panel_tab, on_tab_select, tone=tone
+        )
         selected_voltage = channel_state.range_volts if channel_state.enabled else None
         if channel_state.panel_tab == "Probes":
             self._add_section_label("Attenuators")
@@ -1048,7 +1149,9 @@ class SelectionPanel(QFrame):
             tone=tone,
         )
         self._add_section_label("Coupling mode")
-        self._add_segmented_options(["AC", "DC"], channel_state.coupling, on_coupling, tone=tone)
+        self._add_segmented_options(
+            ["AC", "DC"], channel_state.coupling, on_coupling, tone=tone
+        )
         self._add_section_label("Invert")
         self._add_segmented_options(
             ["Off", "On"],
@@ -1089,7 +1192,8 @@ class SelectionPanel(QFrame):
         self._add_section_label("Math")
         self._add_math_option_with_info(
             "Signal smoother",
-            selected=custom_state.enabled and custom_state.operation == "Signal smoother",
+            selected=custom_state.enabled
+            and custom_state.operation == "Signal smoother",
             callback=on_operation_select,
             help_text=SIGNAL_SMOOTHER_HELP_TEXT,
             tone="custom",
@@ -1104,7 +1208,9 @@ class SelectionPanel(QFrame):
                 columns=2,
                 tone="custom",
             )
-            method_description = QLabel(SMOOTHING_METHOD_DESCRIPTIONS[custom_state.smoothing_method])
+            method_description = QLabel(
+                SMOOTHING_METHOD_DESCRIPTIONS[custom_state.smoothing_method]
+            )
             method_description.setObjectName("footerText")
             method_description.setWordWrap(True)
             self.content_layout.addWidget(method_description)
@@ -1118,7 +1224,9 @@ class SelectionPanel(QFrame):
                 tone="custom",
             )
         self._add_section_label("Color")
-        self._add_color_grid(custom_state.color_hex, on_color_select, palette=CUSTOM_CHANNEL_COLORS)
+        self._add_color_grid(
+            custom_state.color_hex, on_color_select, palette=CUSTOM_CHANNEL_COLORS
+        )
         self._add_off_button(on_off, custom_state.color_hex)
 
     def set_timing(
@@ -1190,7 +1298,9 @@ class SelectionPanel(QFrame):
                 rates,
                 sample_rate_hz,
                 format_sample_rate,
-                lambda value, target_mode=mode_name: on_compatible_sample_rate_select(target_mode, value),
+                lambda value, target_mode=mode_name: on_compatible_sample_rate_select(
+                    target_mode, value
+                ),
                 columns=2,
                 tone="alternate",
                 enabled=True,
@@ -1218,14 +1328,20 @@ class SelectionPanel(QFrame):
         self._clear_content()
         limit_mode = "Unlimited" if max_waveforms <= 0 else "Limited"
         self._add_section_label("Stored waveform limit")
-        self._add_segmented_options(["Limited", "Unlimited"], limit_mode, on_limit_mode_select)
+        self._add_segmented_options(
+            ["Limited", "Unlimited"], limit_mode, on_limit_mode_select
+        )
         if max_waveforms > 0:
-            self._add_text_entry_row("Maximum stored waveforms", str(max_waveforms), on_limit_submit)
+            self._add_text_entry_row(
+                "Maximum stored waveforms", str(max_waveforms), on_limit_submit
+            )
         info_label = QLabel(f"Stored waveforms: {stored_waveforms}")
         info_label.setObjectName("selectorAdjustValue")
         info_label.setAlignment(Qt.AlignCenter)
         self.content_layout.addWidget(info_label)
-        helper = QLabel("Use the preview row above the waveform to review and select saved captures.")
+        helper = QLabel(
+            "Use the preview row above the waveform to review and select saved captures."
+        )
         helper.setObjectName("footerText")
         helper.setWordWrap(True)
         self.content_layout.addWidget(helper)
@@ -1277,12 +1393,6 @@ class SelectionPanel(QFrame):
         on_source_select,
         on_direction_select,
         on_level_step,
-        on_lower_level_step,
-        on_upper_level_step,
-        on_pulse_width_type_select,
-        on_pulse_lower_step,
-        on_pulse_upper_step,
-        on_logic_state_select,
         on_pre_trigger_step,
     ) -> None:
         self.title.setText("Trigger")
@@ -1297,7 +1407,9 @@ class SelectionPanel(QFrame):
             on_mode_select,
             columns=2,
         )
-        self._add_section_label("Type", tone="default" if trigger_enabled else "unavailable")
+        self._add_section_label(
+            "Type", tone="default" if trigger_enabled else "unavailable"
+        )
         self._add_option_grid(
             TRIGGER_TYPES,
             trigger.trigger_type,
@@ -1307,79 +1419,31 @@ class SelectionPanel(QFrame):
             tone="available" if trigger_enabled else "unavailable",
             enabled=trigger_enabled,
         )
-        if trigger.trigger_type in ("Simple edge", "Advanced edge", "Window", "Pulse width"):
-            self._add_section_label("Source", tone="default" if trigger_enabled else "unavailable")
-            self._add_segmented_options(TRIGGER_SOURCES, trigger.source, on_source_select, enabled=trigger_enabled)
-        if trigger.trigger_type in ("Simple edge", "Advanced edge", "Pulse width"):
-            self._add_adjust_row(
-                "Threshold",
-                f"{trigger.level_volts:+.1f} V".replace("+0.0", "0.0"),
-                lambda: on_level_step(-1),
-                lambda: on_level_step(1),
-                enabled=trigger_enabled,
-            )
-        if trigger.trigger_type == "Window":
-            self._add_adjust_row(
-                "Lower threshold",
-                f"{trigger.lower_level_volts:+.1f} V".replace("+0.0", "0.0"),
-                lambda: on_lower_level_step(-1),
-                lambda: on_lower_level_step(1),
-                enabled=trigger_enabled,
-            )
-            self._add_adjust_row(
-                "Upper threshold",
-                f"{trigger.upper_level_volts:+.1f} V".replace("+0.0", "0.0"),
-                lambda: on_upper_level_step(-1),
-                lambda: on_upper_level_step(1),
-                enabled=trigger_enabled,
-            )
+        self._add_section_label(
+            "Source", tone="default" if trigger_enabled else "unavailable"
+        )
+        self._add_segmented_options(
+            TRIGGER_SOURCES,
+            trigger.source,
+            on_source_select,
+            enabled=trigger_enabled,
+        )
+        self._add_adjust_row(
+            "Threshold",
+            f"{trigger.level_volts:+.1f} V".replace("+0.0", "0.0"),
+            lambda: on_level_step(-1),
+            lambda: on_level_step(1),
+            enabled=trigger_enabled,
+        )
         direction_options = trigger_direction_options(trigger.trigger_type)
         if direction_options:
-            self._add_section_label("Direction", tone="default" if trigger_enabled else "unavailable")
+            self._add_section_label(
+                "Direction", tone="default" if trigger_enabled else "unavailable"
+            )
             self._add_segmented_options(
                 direction_options,
                 trigger.direction,
                 on_direction_select,
-                enabled=trigger_enabled,
-            )
-        if trigger.trigger_type == "Pulse width":
-            self._add_section_label("Pulse width type", tone="default" if trigger_enabled else "unavailable")
-            self._add_option_grid(
-                PULSE_WIDTH_TYPES,
-                trigger.pulse_width_type,
-                lambda value: value,
-                on_pulse_width_type_select,
-                columns=2,
-                tone="available" if trigger_enabled else "unavailable",
-                enabled=trigger_enabled,
-            )
-            self._add_adjust_row(
-                "Lower count",
-                str(trigger.pulse_width_lower),
-                lambda: on_pulse_lower_step(-1),
-                lambda: on_pulse_lower_step(1),
-                enabled=trigger_enabled,
-            )
-            self._add_adjust_row(
-                "Upper count",
-                str(trigger.pulse_width_upper),
-                lambda: on_pulse_upper_step(-1),
-                lambda: on_pulse_upper_step(1),
-                enabled=trigger_enabled,
-            )
-        if trigger.trigger_type == "Logic":
-            self._add_section_label("Channel A", tone="default" if trigger_enabled else "unavailable")
-            self._add_segmented_options(
-                TRIGGER_LOGIC_STATES,
-                trigger.logic_a_state,
-                lambda value: on_logic_state_select("A", value),
-                enabled=trigger_enabled,
-            )
-            self._add_section_label("Channel B", tone="default" if trigger_enabled else "unavailable")
-            self._add_segmented_options(
-                TRIGGER_LOGIC_STATES,
-                trigger.logic_b_state,
-                lambda value: on_logic_state_select("B", value),
                 enabled=trigger_enabled,
             )
         self._add_adjust_row(
@@ -1389,6 +1453,3 @@ class SelectionPanel(QFrame):
             lambda: on_pre_trigger_step(1),
             enabled=trigger_enabled,
         )
-
-
-

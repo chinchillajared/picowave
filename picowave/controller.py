@@ -2,12 +2,23 @@ from __future__ import annotations
 
 import os
 import time
-from ctypes import CFUNCTYPE, POINTER, byref, c_double, c_int16, c_int32, c_uint32, c_void_p, cast
+from ctypes import (
+    CFUNCTYPE,
+    POINTER,
+    byref,
+    c_double,
+    c_int16,
+    c_int32,
+    c_uint32,
+    c_void_p,
+    cast,
+)
 
 import numpy as np
 
 from picowave.config import (
     FAST_STREAMING_MAX_SAMPLES,
+    FAST_STREAMING_TRIGGER_FALLBACK_THRESHOLD_S,
     PS2000_PULSE_WIDTH_TYPE,
     PS2000_THRESHOLD_DIRECTION,
     PS2000_THRESHOLD_MODE,
@@ -34,6 +45,8 @@ from picowave.processing import (
     planning_active_channel_count,
     sample_count_for_span,
 )
+
+
 class Pico2204AController:
     def __init__(self) -> None:
         self._dll_handles: list[object] = []
@@ -86,7 +99,11 @@ class Pico2204AController:
         CONTROLLER_LOGGER.info("Preparing PicoSDK runtime.")
         try:
             from picosdk.device import ChannelConfig
-            from picosdk.errors import CannotFindPicoSDKError, DeviceNotFoundError, PicoSDKCtypesError
+            from picosdk.errors import (
+                CannotFindPicoSDKError,
+                DeviceNotFoundError,
+                PicoSDKCtypesError,
+            )
         except ModuleNotFoundError as exc:
             self._last_status = "Python package 'picosdk' is not installed."
             self._last_source = "Hardware"
@@ -117,20 +134,36 @@ class Pico2204AController:
         self._initialized = True
         CONTROLLER_LOGGER.info("PicoSDK runtime ready.")
 
-    def _connect_if_needed(self, force: bool = False, serial: str | None = None) -> None:
+    def _connect_if_needed(
+        self, force: bool = False, serial: str | None = None
+    ) -> None:
         requested_serial = (serial or "").strip()
-        if self._device is not None and (not requested_serial or requested_serial == self._connected_serial):
+        if self._device is not None and (
+            not requested_serial or requested_serial == self._connected_serial
+        ):
             return
-        if self._device is not None and requested_serial and requested_serial != self._connected_serial:
+        if (
+            self._device is not None
+            and requested_serial
+            and requested_serial != self._connected_serial
+        ):
             self._disconnect()
         if not force and time.time() - self._last_connect_attempt < 5.0:
             return
 
         self._last_connect_attempt = time.time()
-        CONTROLLER_LOGGER.info("Connecting to PicoScope 2204A. serial=%s force=%s", requested_serial or "<any>", force)
+        CONTROLLER_LOGGER.info(
+            "Connecting to PicoScope 2204A. serial=%s force=%s",
+            requested_serial or "<any>",
+            force,
+        )
         try:
             self._prepare_runtime()
-            self._device = self._ps.open_unit(serial=requested_serial.encode("utf-8")) if requested_serial else self._ps.open_unit()
+            self._device = (
+                self._ps.open_unit(serial=requested_serial.encode("utf-8"))
+                if requested_serial
+                else self._ps.open_unit()
+            )
             info = self._device.info
             variant = decode_text(info.variant)
             serial = decode_text(info.serial)
@@ -179,12 +212,16 @@ class Pico2204AController:
         except self._errors["cannot_find"]:
             self._last_status = "PicoSDK DLL not found."
             self._last_source = "Hardware"
-            CONTROLLER_LOGGER.exception("Could not list devices because PicoSDK DLL was not found.")
+            CONTROLLER_LOGGER.exception(
+                "Could not list devices because PicoSDK DLL was not found."
+            )
             return []
         except Exception as exc:
             self._last_status = f"Hardware unavailable: {exc}"
             self._last_source = "Hardware"
-            CONTROLLER_LOGGER.exception("Unexpected error while listing PicoScope devices.")
+            CONTROLLER_LOGGER.exception(
+                "Unexpected error while listing PicoScope devices."
+            )
             return []
 
         devices: list[dict[str, str]] = []
@@ -229,7 +266,9 @@ class Pico2204AController:
             ("Kernel driver version", "PICO_KERNEL_DRIVER_VERSION"),
             ("Error code / driver-reported status info", "PICO_ERROR_CODE"),
         ]
-        values = self._ps.get_unit_info(self._device, *[key for _label, key in info_keys])
+        values = self._ps.get_unit_info(
+            self._device, *[key for _label, key in info_keys]
+        )
         metadata = {}
         for label, key in info_keys:
             metadata[label] = decode_text(getattr(values, key, "")) or "Unavailable"
@@ -247,7 +286,9 @@ class Pico2204AController:
         return int(clamp(requested, 200, max_samples))
 
     def _requested_sample_count(self, settings: ScopeState) -> int:
-        return max(1, int(round(settings.time_per_div * 10.0 * settings.sample_rate_hz)))
+        return max(
+            1, int(round(settings.time_per_div * 10.0 * settings.sample_rate_hz))
+        )
 
     def _choose_timebase(self, sample_count: int, target_span: float):
         target_interval = target_span / max(sample_count - 1, 1)
@@ -300,8 +341,16 @@ class Pico2204AController:
         )
         self._device.set_channels(channel_a, channel_b)
         return {
-            "A": float(self._device._channel_ranges.get("A", channel_hardware_range(settings.channel_a))),
-            "B": float(self._device._channel_ranges.get("B", channel_hardware_range(settings.channel_b))),
+            "A": float(
+                self._device._channel_ranges.get(
+                    "A", channel_hardware_range(settings.channel_a)
+                )
+            ),
+            "B": float(
+                self._device._channel_ranges.get(
+                    "B", channel_hardware_range(settings.channel_b)
+                )
+            ),
         }
 
     # Backend: trigger configuration
@@ -344,7 +393,9 @@ class Pico2204AController:
                 -float(pre_trigger_percent),
             )
 
-    def _source_condition(self, source: str, state: int, include_pwq: int = 0) -> PS2000_TRIGGER_CONDITIONS:
+    def _source_condition(
+        self, source: str, state: int, include_pwq: int = 0
+    ) -> PS2000_TRIGGER_CONDITIONS:
         return PS2000_TRIGGER_CONDITIONS(
             channelA=state if source == "A" else PS2000_TRIGGER_STATE["Don't care"],
             channelB=state if source == "B" else PS2000_TRIGGER_STATE["Don't care"],
@@ -379,14 +430,22 @@ class Pico2204AController:
                 "_SetAdvTriggerChannelDirections",
             )
         ):
-            raise RuntimeError("Advanced trigger APIs are not available in this PicoSDK installation.")
+            raise RuntimeError(
+                "Advanced trigger APIs are not available in this PicoSDK installation."
+            )
 
         handle = c_int16(self._device.handle)
         self._clear_pulse_width_qualifier()
         properties_buffer = (
-            (PS2000_TRIGGER_CHANNEL_PROPERTIES * len(properties))(*properties) if properties else None
+            (PS2000_TRIGGER_CHANNEL_PROPERTIES * len(properties))(*properties)
+            if properties
+            else None
         )
-        conditions_buffer = (PS2000_TRIGGER_CONDITIONS * len(conditions))(*conditions) if conditions else None
+        conditions_buffer = (
+            (PS2000_TRIGGER_CONDITIONS * len(conditions))(*conditions)
+            if conditions
+            else None
+        )
         properties_result = self._ps._SetAdvTriggerChannelProperties(
             handle,
             properties_buffer,
@@ -410,15 +469,21 @@ class Pico2204AController:
         if not properties_result or not conditions_result or not directions_result:
             raise RuntimeError("Could not apply advanced trigger settings.")
 
-    def _apply_simple_edge_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_simple_edge_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         source = settings.trigger.source
         source_channel = settings.channel_a if source == "A" else settings.channel_b
         if not source_channel.enabled:
             raise RuntimeError(f"Trigger source {source} must be enabled.")
 
-        hardware_level = display_to_hardware_volts(source_channel, settings.trigger.level_volts)
+        hardware_level = display_to_hardware_volts(
+            source_channel, settings.trigger.level_volts
+        )
         threshold_counts = self._threshold_counts(hardware_level, active_ranges[source])
-        direction_name = self._trigger_direction_for_channel(settings.trigger.direction, source_channel)
+        direction_name = self._trigger_direction_for_channel(
+            settings.trigger.direction, source_channel
+        )
         direction = 0 if direction_name == "Rising" else 1
         delay_percent = -float(settings.trigger.pre_trigger_percent)
         auto_trigger_ms = self._trigger_auto_ms(settings.trigger.mode)
@@ -444,13 +509,17 @@ class Pico2204AController:
         if not result:
             raise RuntimeError("Could not apply trigger settings.")
 
-    def _apply_advanced_edge_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_advanced_edge_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         source = settings.trigger.source
         source_channel = settings.channel_a if source == "A" else settings.channel_b
         if not source_channel.enabled:
             raise RuntimeError(f"Trigger source {source} must be enabled.")
 
-        hardware_level = display_to_hardware_volts(source_channel, settings.trigger.level_volts)
+        hardware_level = display_to_hardware_volts(
+            source_channel, settings.trigger.level_volts
+        )
         threshold = self._threshold_counts(hardware_level, active_ranges[source])
         properties = [
             PS2000_TRIGGER_CHANNEL_PROPERTIES(
@@ -464,7 +533,9 @@ class Pico2204AController:
         conditions = [self._source_condition(source, PS2000_TRIGGER_STATE["True"])]
         directions = {
             source: PS2000_THRESHOLD_DIRECTION[
-                self._trigger_direction_for_channel(settings.trigger.direction, source_channel)
+                self._trigger_direction_for_channel(
+                    settings.trigger.direction, source_channel
+                )
             ]
         }
         self._apply_advanced_trigger_core(
@@ -475,22 +546,32 @@ class Pico2204AController:
             settings.trigger.pre_trigger_percent,
         )
 
-    def _apply_window_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_window_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         source = settings.trigger.source
         source_channel = settings.channel_a if source == "A" else settings.channel_b
         if not source_channel.enabled:
             raise RuntimeError(f"Trigger source {source} must be enabled.")
 
-        lower_volts = min(settings.trigger.lower_level_volts, settings.trigger.upper_level_volts)
-        upper_volts = max(settings.trigger.lower_level_volts, settings.trigger.upper_level_volts)
+        lower_volts = min(
+            settings.trigger.lower_level_volts, settings.trigger.upper_level_volts
+        )
+        upper_volts = max(
+            settings.trigger.lower_level_volts, settings.trigger.upper_level_volts
+        )
         hardware_lower = display_to_hardware_volts(source_channel, lower_volts)
         hardware_upper = display_to_hardware_volts(source_channel, upper_volts)
         actual_lower = min(hardware_lower, hardware_upper)
         actual_upper = max(hardware_lower, hardware_upper)
         properties = [
             PS2000_TRIGGER_CHANNEL_PROPERTIES(
-                thresholdMajor=self._threshold_counts(actual_upper, active_ranges[source]),
-                thresholdMinor=self._threshold_counts(actual_lower, active_ranges[source]),
+                thresholdMajor=self._threshold_counts(
+                    actual_upper, active_ranges[source]
+                ),
+                thresholdMinor=self._threshold_counts(
+                    actual_lower, active_ranges[source]
+                ),
                 hysteresis=0,
                 channel=self._ps.PICO_CHANNEL[source],
                 thresholdMode=PS2000_THRESHOLD_MODE["Window"],
@@ -506,17 +587,23 @@ class Pico2204AController:
             settings.trigger.pre_trigger_percent,
         )
 
-    def _apply_logic_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_logic_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         states = {
             "A": settings.trigger.logic_a_state,
             "B": settings.trigger.logic_b_state,
         }
         if all(state == "Don't care" for state in states.values()):
-            raise RuntimeError("Logic trigger requires Channel A or B to be set to True or False.")
+            raise RuntimeError(
+                "Logic trigger requires Channel A or B to be set to True or False."
+            )
 
         effective_states = dict(states)
         for channel_name in ("A", "B"):
-            channel_state = settings.channel_a if channel_name == "A" else settings.channel_b
+            channel_state = (
+                settings.channel_a if channel_name == "A" else settings.channel_b
+            )
             if not channel_state.invert:
                 continue
             if effective_states[channel_name] == "True":
@@ -537,11 +624,19 @@ class Pico2204AController:
         for channel_name, state_name in effective_states.items():
             if state_name == "Don't care":
                 continue
-            source_channel = settings.channel_a if channel_name == "A" else settings.channel_b
+            source_channel = (
+                settings.channel_a if channel_name == "A" else settings.channel_b
+            )
             if not source_channel.enabled:
-                raise RuntimeError(f"Logic trigger channel {channel_name} must be enabled.")
-            hardware_level = display_to_hardware_volts(source_channel, settings.trigger.level_volts)
-            threshold = self._threshold_counts(hardware_level, active_ranges[channel_name])
+                raise RuntimeError(
+                    f"Logic trigger channel {channel_name} must be enabled."
+                )
+            hardware_level = display_to_hardware_volts(
+                source_channel, settings.trigger.level_volts
+            )
+            threshold = self._threshold_counts(
+                hardware_level, active_ranges[channel_name]
+            )
             properties.append(
                 PS2000_TRIGGER_CHANNEL_PROPERTIES(
                     thresholdMajor=threshold,
@@ -551,7 +646,9 @@ class Pico2204AController:
                     thresholdMode=PS2000_THRESHOLD_MODE["Level"],
                 )
             )
-            directions[channel_name] = PS2000_THRESHOLD_DIRECTION["Above" if state_name == "True" else "Below"]
+            directions[channel_name] = PS2000_THRESHOLD_DIRECTION[
+                "Above" if state_name == "True" else "Below"
+            ]
         self._apply_advanced_trigger_core(
             properties,
             [conditions],
@@ -560,13 +657,17 @@ class Pico2204AController:
             settings.trigger.pre_trigger_percent,
         )
 
-    def _apply_pulse_width_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_pulse_width_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         source = settings.trigger.source
         source_channel = settings.channel_a if source == "A" else settings.channel_b
         if not source_channel.enabled:
             raise RuntimeError(f"Trigger source {source} must be enabled.")
 
-        hardware_level = display_to_hardware_volts(source_channel, settings.trigger.level_volts)
+        hardware_level = display_to_hardware_volts(
+            source_channel, settings.trigger.level_volts
+        )
         threshold = self._threshold_counts(hardware_level, active_ranges[source])
         properties = [
             PS2000_TRIGGER_CHANNEL_PROPERTIES(
@@ -584,7 +685,9 @@ class Pico2204AController:
                 include_pwq=PS2000_TRIGGER_STATE["True"],
             )
         ]
-        direction_name = self._trigger_direction_for_channel(settings.trigger.direction, source_channel)
+        direction_name = self._trigger_direction_for_channel(
+            settings.trigger.direction, source_channel
+        )
         directions = {source: PS2000_THRESHOLD_DIRECTION[direction_name]}
         self._apply_advanced_trigger_core(
             properties,
@@ -610,22 +713,18 @@ class Pico2204AController:
         if not result:
             raise RuntimeError("Could not apply pulse width trigger settings.")
 
-    def _apply_trigger(self, settings: ScopeState, active_ranges: dict[str, float]) -> None:
+    def _apply_trigger(
+        self, settings: ScopeState, active_ranges: dict[str, float]
+    ) -> None:
         if settings.trigger.mode == "None":
             self._ps.set_null_trigger(self._device)
             return
         if settings.trigger.trigger_type == "Simple edge":
             self._apply_simple_edge_trigger(settings, active_ranges)
-        elif settings.trigger.trigger_type == "Advanced edge":
-            self._apply_advanced_edge_trigger(settings, active_ranges)
-        elif settings.trigger.trigger_type == "Window":
-            self._apply_window_trigger(settings, active_ranges)
-        elif settings.trigger.trigger_type == "Logic":
-            self._apply_logic_trigger(settings, active_ranges)
-        elif settings.trigger.trigger_type == "Pulse width":
-            self._apply_pulse_width_trigger(settings, active_ranges)
         else:
-            raise RuntimeError(f"Unsupported trigger type: {settings.trigger.trigger_type}")
+            raise RuntimeError(
+                f"Unsupported trigger type: {settings.trigger.trigger_type}"
+            )
 
     # Backend: frame conversion shared by all acquisition modes
 
@@ -680,13 +779,13 @@ class Pico2204AController:
             else format_trigger_summary(settings.trigger)
         )
         trigger_enabled = (
-            settings.trigger.mode != "None"
-            and source_label != "Compatible streaming"
-            and settings.trigger.source in active_ranges
+            settings.trigger.mode != "None" and settings.trigger.source in active_ranges
         )
         trigger_ratio = clamp(settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0)
         if trigger_sample_index is not None and times.size > 1:
-            trigger_ratio = clamp(trigger_sample_index / max(times.size - 1, 1), 0.0, 1.0)
+            trigger_ratio = clamp(
+                trigger_sample_index / max(times.size - 1, 1), 0.0, 1.0
+            )
         return CaptureFrame(
             times=times,
             channel_a=volts_a,
@@ -694,8 +793,12 @@ class Pico2204AController:
             sample_rate_hz=sample_rate_hz,
             sample_count=int(times.size),
             y_range_volts=max(
-                channel_display_range(settings.channel_a) if settings.channel_a.enabled else 0.0,
-                channel_display_range(settings.channel_b) if settings.channel_b.enabled else 0.0,
+                channel_display_range(settings.channel_a)
+                if settings.channel_a.enabled
+                else 0.0,
+                channel_display_range(settings.channel_b)
+                if settings.channel_b.enabled
+                else 0.0,
                 channel_display_range(settings.channel_a),
             ),
             source_label=source_label,
@@ -705,7 +808,8 @@ class Pico2204AController:
             trigger_source=settings.trigger.source,
             trigger_level_volts=display_trigger_level(settings.trigger),
             trigger_time_ratio=trigger_ratio,
-            trigger_confirmed=trigger_enabled and (trigger_confirmed or source_label == "Block"),
+            trigger_confirmed=trigger_enabled
+            and (trigger_confirmed or source_label == "Block"),
             channel_a_overrange=overrange_a,
             channel_b_overrange=overrange_b,
         )
@@ -720,7 +824,9 @@ class Pico2204AController:
         self._apply_trigger(settings, active_ranges)
 
         requested_span = settings.time_per_div * 10.0
-        max_block_samples = block_max_sample_count(planning_active_channel_count(settings))
+        max_block_samples = block_max_sample_count(
+            planning_active_channel_count(settings)
+        )
         requested_sample_count = self._target_sample_count(settings)
         sample_count, timebase = self._choose_block_capture_plan(
             requested_sample_count,
@@ -728,15 +834,21 @@ class Pico2204AController:
         )
         if timebase is None:
             raise RuntimeError("No valid timebase found for the selected view.")
-        actual_sample_count = sample_count_for_span(requested_span, float(timebase.time_interval), minimum=200)
+        actual_sample_count = sample_count_for_span(
+            requested_span, float(timebase.time_interval), minimum=200
+        )
         if actual_sample_count > max_block_samples:
             timebase = self._choose_timebase(max_block_samples, requested_span)
             if timebase is None:
                 raise RuntimeError("No valid timebase found for the selected view.")
-            actual_sample_count = sample_count_for_span(requested_span, float(timebase.time_interval), minimum=200)
+            actual_sample_count = sample_count_for_span(
+                requested_span, float(timebase.time_interval), minimum=200
+            )
         actual_sample_count = min(actual_sample_count, max_block_samples)
 
-        capture_time = self._ps.run_block(self._device, 0, actual_sample_count, timebase.timebase_id, 1, 0)
+        capture_time = self._ps.run_block(
+            self._device, 0, actual_sample_count, timebase.timebase_id, 1, 0
+        )
         deadline = time.time() + max(capture_time, 0.05) + 2.0
         while not self._ps.is_ready(self._device):
             if time.time() > deadline:
@@ -744,9 +856,13 @@ class Pico2204AController:
             time.sleep(0.004)
 
         active_channels = ["A"] + (["B"] if settings.channel_b.enabled else [])
-        raw_data, _overflow = self._ps.get_values(self._device, active_channels, actual_sample_count, 0)
+        raw_data, _overflow = self._ps.get_values(
+            self._device, active_channels, actual_sample_count, 0
+        )
         self._ps.stop(self._device)
-        times = np.arange(actual_sample_count, dtype=np.float32) * float(timebase.time_interval)
+        times = np.arange(actual_sample_count, dtype=np.float32) * float(
+            timebase.time_interval
+        )
         return self._build_frame(
             settings,
             times,
@@ -756,72 +872,11 @@ class Pico2204AController:
             (1.0 / timebase.time_interval) if timebase.time_interval else 0.0,
         )
 
-    def _capture_compatible_streaming(self, settings: ScopeState) -> CaptureFrame:
-        if not settings.channel_a.enabled and not settings.channel_b.enabled:
-            raise RuntimeError("Enable Channel A or B before starting acquisition.")
-        if settings.sample_rate_hz > 1_000:
-            raise RuntimeError("Compatible streaming supports up to 1 kS/s on this controller.")
-
-        active_ranges = self._apply_channels(settings)
-        self._ps.set_null_trigger(self._device)
-
-        interval_ms = max(1, int(round(1000.0 / settings.sample_rate_hz)))
-        actual_rate_hz = 1000.0 / interval_ms
-        sample_count = int(clamp(sample_count_for_span(settings.time_per_div * 10.0, 1.0 / actual_rate_hz, minimum=200), 200, 60_000))
-        handle = c_int16(self._device.handle)
-
-        status = self._ps._run_streaming(
-            handle,
-            c_int16(interval_ms),
-            c_int32(sample_count),
-            c_int16(0),
-        )
-        if not status:
-            raise RuntimeError("Compatible streaming could not be started.")
-
-        buffer_a = np.empty(sample_count, dtype=np.int16) if settings.channel_a.enabled else None
-        buffer_b = np.empty(sample_count, dtype=np.int16) if settings.channel_b.enabled else None
-        overflow = c_int16(0)
-        deadline = time.time() + max(2.0, sample_count * interval_ms / 1000.0 + 1.0)
-        captured = 0
-        while captured == 0:
-            captured = int(
-                self._ps._get_values(
-                    handle,
-                    buffer_a.ctypes.data if buffer_a is not None else None,
-                    buffer_b.ctypes.data if buffer_b is not None else None,
-                    None,
-                    None,
-                    byref(overflow),
-                    c_int32(sample_count),
-                )
-            )
-            if captured > 0:
-                break
-            if time.time() > deadline:
-                self._ps.stop(self._device)
-                raise TimeoutError("Timed out waiting for compatible streaming data.")
-            time.sleep(max(interval_ms / 1000.0, 0.02))
-
-        self._ps.stop(self._device)
-        raw_data = {}
-        if buffer_a is not None:
-            raw_data["A"] = buffer_a[:captured]
-        if buffer_b is not None:
-            raw_data["B"] = buffer_b[:captured]
-        times = np.arange(captured, dtype=np.float32) / float(actual_rate_hz)
-        return self._build_frame(
-            settings,
-            times,
-            raw_data,
-            active_ranges,
-            "Compatible streaming",
-            actual_rate_hz,
-        )
-
     # Backend: fast streaming helpers
 
-    def _interval_to_ps2000_units(self, interval_seconds: float) -> tuple[int, int, float]:
+    def _interval_to_ps2000_units(
+        self, interval_seconds: float
+    ) -> tuple[int, int, float]:
         units = (
             (1.0, 5, 1.0),
             (1e-3, 4, 1e-3),
@@ -842,13 +897,91 @@ class Pico2204AController:
         # larger aggregation factors made short timebase captures look
         # distorted even though the underlying signal was stable.
         aggregate = 1
-        overview_size = int(clamp(max(60_000, sample_count * 4), 60_000, FAST_STREAMING_MAX_SAMPLES))
+        overview_size = int(
+            clamp(max(60_000, sample_count * 4), 60_000, FAST_STREAMING_MAX_SAMPLES)
+        )
         return aggregate, overview_size
 
-    def _fast_streaming_capture_window(self, settings: ScopeState, actual_interval_s: float) -> tuple[int, int]:
+    def _should_fallback_to_block_for_trigger(self, settings: ScopeState) -> bool:
+        """Check if we should fall back to Block mode for short timebases with trigger.
+
+        Fast streaming trigger alignment is less reliable at short timebases,
+        especially when trigger is enabled. This method checks if the current
+        settings would benefit from falling back to Block mode.
+        """
+        if settings.trigger.mode == "None":
+            return False
+        if settings.acquisition_mode != "Fast streaming":
+            return False
+
+        # Check if timebase is below the fallback threshold
+        time_per_div = settings.time_per_div
+        if time_per_div >= FAST_STREAMING_TRIGGER_FALLBACK_THRESHOLD_S:
+            return False
+
+        # For short timebases with trigger enabled, fall back to Block mode
+        # which has more reliable trigger alignment
+        CONTROLLER_LOGGER.info(
+            "Falling back to Block mode for short timebase with trigger. "
+            "time_per_div=%.2e threshold=%.2e",
+            time_per_div,
+            FAST_STREAMING_TRIGGER_FALLBACK_THRESHOLD_S,
+        )
+        return True
+
+    def _validate_post_capture_trigger_alignment(
+        self,
+        settings: ScopeState,
+        effective_trigger_index: int | None,
+        start_index: int,
+        sliced_count: int,
+        actual_interval_s: float,
+    ) -> bool:
+        """Validate that the trigger edge appears in the expected location after slicing.
+
+        Returns True if validation passes, False if there's a significant mismatch.
+        This can be used to reject frames or trigger re-capture if needed.
+        """
+        if settings.trigger.mode == "None":
+            return True
+
+        if effective_trigger_index is None:
+            return True
+
+        # Calculate where the trigger should appear in the sliced data
+        expected_pre_trigger_index = int(
+            round(
+                clamp(settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0)
+                * max(sliced_count - 1, 1)
+            )
+        )
+
+        # Calculate where it actually appears
+        actual_relative_index = max(0, int(effective_trigger_index) - start_index)
+
+        # Allow some tolerance for jitter and noise
+        tolerance_samples = max(10, int(0.05 * sliced_count))  # 5% or 10 samples
+
+        if abs(actual_relative_index - expected_pre_trigger_index) > tolerance_samples:
+            CONTROLLER_LOGGER.warning(
+                "Post-capture validation failed. expected=%s actual=%s tolerance=%s. "
+                "Consider re-capturing or using Block mode for more reliable trigger alignment.",
+                expected_pre_trigger_index,
+                actual_relative_index,
+                tolerance_samples,
+            )
+            return False
+
+        return True
+
+    def _fast_streaming_capture_window(
+        self, settings: ScopeState, actual_interval_s: float
+    ) -> tuple[int, int]:
         desired_samples = int(
             clamp(
-                sample_count_for_span(settings.time_per_div * 10.0, actual_interval_s, minimum=200),
+                sample_count_for_span(
+                    settings.time_per_div * 10.0, actual_interval_s, minimum=200
+                ),
                 200,
                 FAST_STREAMING_MAX_SAMPLES,
             )
@@ -858,9 +991,15 @@ class Pico2204AController:
             # so the application can re-slice the raw waveform around the real
             # threshold crossing instead of depending only on the driver's
             # trigger index.
-            guard_samples = min(max(500, desired_samples), max(0, FAST_STREAMING_MAX_SAMPLES - desired_samples))
+            guard_samples = min(
+                max(500, desired_samples),
+                max(0, FAST_STREAMING_MAX_SAMPLES - desired_samples),
+            )
         else:
-            guard_samples = min(max(200, desired_samples // 4), max(0, FAST_STREAMING_MAX_SAMPLES - desired_samples))
+            guard_samples = min(
+                max(200, desired_samples // 4),
+                max(0, FAST_STREAMING_MAX_SAMPLES - desired_samples),
+            )
         return desired_samples, desired_samples + guard_samples
 
     def _find_simple_edge_trigger_index(
@@ -870,24 +1009,73 @@ class Pico2204AController:
         direction_name: str,
         *,
         hint_index: int | None = None,
+        noise_tolerance: int = 10,
+        hysteresis_samples: int = 3,
     ) -> int | None:
+        """Find the trigger edge with improved alignment for Fast streaming.
+
+        Searches forward from the driver hint instead of choosing the nearest crossing.
+        Adds noise tolerance and hysteresis for better discrimination of real edges.
+        """
         if raw_samples.size < 2:
             return None
+
         samples = raw_samples.astype(np.int32, copy=False)
+
+        # Apply noise tolerance by smoothing near the threshold
+        threshold_min = threshold_counts - noise_tolerance
+        threshold_max = threshold_counts + noise_tolerance
+
         if direction_name == "Rising":
-            crossings = np.flatnonzero((samples[:-1] < threshold_counts) & (samples[1:] >= threshold_counts)) + 1
+            # Rising edge: from below threshold_min to above threshold_max with hysteresis
+            crossings = (
+                np.flatnonzero(
+                    (samples[:-1] < threshold_min) & (samples[1:] >= threshold_max)
+                )
+                + 1
+            )
         elif direction_name == "Falling":
-            crossings = np.flatnonzero((samples[:-1] > threshold_counts) & (samples[1:] <= threshold_counts)) + 1
+            # Falling edge: from above threshold_max to below threshold_min with hysteresis
+            crossings = (
+                np.flatnonzero(
+                    (samples[:-1] > threshold_max) & (samples[1:] <= threshold_min)
+                )
+                + 1
+            )
         else:
-            crossings = np.flatnonzero(
-                ((samples[:-1] < threshold_counts) & (samples[1:] >= threshold_counts))
-                | ((samples[:-1] > threshold_counts) & (samples[1:] <= threshold_counts))
-            ) + 1
+            # Both directions: find any crossing with hysteresis
+            rising = (
+                np.flatnonzero(
+                    (samples[:-1] < threshold_min) & (samples[1:] >= threshold_max)
+                )
+                + 1
+            )
+            falling = (
+                np.flatnonzero(
+                    (samples[:-1] > threshold_max) & (samples[1:] <= threshold_min)
+                )
+                + 1
+            )
+            crossings = np.sort(np.unique(np.concatenate([rising, falling])))
+
         if crossings.size == 0:
             return None
+
         if hint_index is None:
             return int(crossings[0])
-        return int(crossings[np.argmin(np.abs(crossings - int(hint_index)))])
+
+        hint_int = int(hint_index)
+
+        # Search forward from hint to prefer driver's reported position
+        forward_crossings = crossings[crossings >= hint_int]
+        if forward_crossings.size > 0:
+            # Return the first crossing after the hint (within reason)
+            first_forward = int(forward_crossings[0])
+            if first_forward - hint_int <= 50:  # Within 50 samples is reasonable
+                return first_forward
+
+        # Fall back to nearest crossing if no good forward match
+        return int(crossings[np.argmin(np.abs(crossings - hint_int))])
 
     def _software_realign_fast_streaming_trigger(
         self,
@@ -898,7 +1086,10 @@ class Pico2204AController:
         captured: int,
         driver_trigger_index: int | None,
     ) -> tuple[int | None, str]:
-        if settings.trigger.mode == "None" or settings.trigger.trigger_type != "Simple edge":
+        if (
+            settings.trigger.mode == "None"
+            or settings.trigger.trigger_type != "Simple edge"
+        ):
             return driver_trigger_index, "driver"
         source = settings.trigger.source
         raw_source = raw_buffers.get(source)
@@ -907,8 +1098,12 @@ class Pico2204AController:
         source_channel = settings.channel_a if source == "A" else settings.channel_b
         if source not in active_ranges:
             return driver_trigger_index, "driver"
-        direction_name = self._trigger_direction_for_channel(settings.trigger.direction, source_channel)
-        hardware_level = display_to_hardware_volts(source_channel, settings.trigger.level_volts)
+        direction_name = self._trigger_direction_for_channel(
+            settings.trigger.direction, source_channel
+        )
+        hardware_level = display_to_hardware_volts(
+            source_channel, settings.trigger.level_volts
+        )
         threshold_counts = self._threshold_counts(hardware_level, active_ranges[source])
         aligned_index = self._find_simple_edge_trigger_index(
             raw_source[:captured],
@@ -931,7 +1126,9 @@ class Pico2204AController:
         if settings.trigger.mode == "None" or not triggered:
             return 0.0
         total_span_s = max(sample_count - 1, 0) * actual_interval_s
-        pre_trigger_s = total_span_s * clamp(settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0)
+        pre_trigger_s = total_span_s * clamp(
+            settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0
+        )
         return -pre_trigger_s * 1e9
 
     def _capture_fast_streaming(self, settings: ScopeState) -> CaptureFrame:
@@ -944,7 +1141,9 @@ class Pico2204AController:
         interval_value, unit_code, actual_interval_s = self._interval_to_ps2000_units(
             1.0 / settings.sample_rate_hz
         )
-        desired_sample_count, capture_sample_count = self._fast_streaming_capture_window(settings, actual_interval_s)
+        desired_sample_count, capture_sample_count = (
+            self._fast_streaming_capture_window(settings, actual_interval_s)
+        )
         aggregate, overview_size = self._fast_streaming_settings(capture_sample_count)
         handle = c_int16(self._device.handle)
         status = self._ps._run_streaming_ns(
@@ -970,13 +1169,24 @@ class Pico2204AController:
             c_uint32,
         )
 
-        def _overview_callback(_overview_buffers, _overflow, _triggered_at, _triggered, auto_stop, _n_values):
+        def _overview_callback(
+            _overview_buffers,
+            _overflow,
+            _triggered_at,
+            _triggered,
+            auto_stop,
+            _n_values,
+        ):
             callback_state["auto_stop"] = bool(auto_stop)
-            callback_state["triggered"] = callback_state["triggered"] or bool(_triggered)
+            callback_state["triggered"] = callback_state["triggered"] or bool(
+                _triggered
+            )
 
         callback = callback_type(_overview_callback)
         overrun = c_int16(0)
-        deadline = time.time() + max(2.0, capture_sample_count * actual_interval_s + 1.0)
+        deadline = time.time() + max(
+            2.0, capture_sample_count * actual_interval_s + 1.0
+        )
         while not callback_state["auto_stop"]:
             self._ps._get_streaming_last_values(handle, cast(callback, c_void_p))
             self._ps._overview_buffer_status(handle, byref(overrun))
@@ -993,8 +1203,16 @@ class Pico2204AController:
 
         self._ps.stop(self._device)
 
-        buffer_a = np.empty(capture_sample_count, dtype=np.int16) if settings.channel_a.enabled else None
-        buffer_b = np.empty(capture_sample_count, dtype=np.int16) if settings.channel_b.enabled else None
+        buffer_a = (
+            np.empty(capture_sample_count, dtype=np.int16)
+            if settings.channel_a.enabled
+            else None
+        )
+        buffer_b = (
+            np.empty(capture_sample_count, dtype=np.int16)
+            if settings.channel_b.enabled
+            else None
+        )
         start_time = c_double(
             self._fast_streaming_start_time_ns(
                 settings,
@@ -1030,18 +1248,29 @@ class Pico2204AController:
             full_raw_data["B"] = buffer_b[:captured]
 
         driver_trigger_index = int(trigger_at.value) if bool(triggered.value) else None
-        effective_trigger_index, trigger_index_source = self._software_realign_fast_streaming_trigger(
-            settings,
-            active_ranges,
-            full_raw_data,
-            captured=captured,
-            driver_trigger_index=driver_trigger_index,
+        effective_trigger_index, trigger_index_source = (
+            self._software_realign_fast_streaming_trigger(
+                settings,
+                active_ranges,
+                full_raw_data,
+                captured=captured,
+                driver_trigger_index=driver_trigger_index,
+            )
         )
         target_trigger_index = int(
-            round(clamp(settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0) * max(desired_sample_count - 1, 1))
+            round(
+                clamp(settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0)
+                * max(desired_sample_count - 1, 1)
+            )
         )
         if effective_trigger_index is not None:
-            start_index = int(clamp(int(effective_trigger_index) - target_trigger_index, 0, max(captured - desired_sample_count, 0)))
+            start_index = int(
+                clamp(
+                    int(effective_trigger_index) - target_trigger_index,
+                    0,
+                    max(captured - desired_sample_count, 0),
+                )
+            )
         else:
             start_index = 0
         end_index = min(captured, start_index + desired_sample_count)
@@ -1076,6 +1305,60 @@ class Pico2204AController:
             start_index,
             end_index,
         )
+
+        # Enhanced trigger validation logging
+        if settings.trigger.mode != "None" and bool(triggered.value):
+            if driver_trigger_index is not None and effective_trigger_index is not None:
+                driver_vs_software_diff = abs(
+                    driver_trigger_index - effective_trigger_index
+                )
+                if driver_vs_software_diff > 10:
+                    CONTROLLER_LOGGER.warning(
+                        "Trigger alignment discrepancy. driver=%s software=%s diff=%s samples. "
+                        "This may indicate unreliable trigger alignment at this timebase.",
+                        driver_trigger_index,
+                        effective_trigger_index,
+                        driver_vs_software_diff,
+                    )
+
+                # Validate that trigger edge appears near expected pre-trigger ratio
+                if effective_trigger_index is not None:
+                    expected_pre_trigger_index = int(
+                        round(
+                            clamp(
+                                settings.trigger.pre_trigger_percent / 100.0, 0.0, 1.0
+                            )
+                            * max(sliced_count - 1, 1)
+                        )
+                    )
+                    actual_relative_index = max(
+                        0, int(effective_trigger_index) - start_index
+                    )
+                    pre_trigger_discrepancy = abs(
+                        actual_relative_index - expected_pre_trigger_index
+                    )
+                    if pre_trigger_discrepancy > 20:
+                        CONTROLLER_LOGGER.warning(
+                            "Pre-trigger ratio mismatch. expected_index=%s actual_index=%s diff=%s samples. "
+                            "Trigger marker may not align with visible waveform edge.",
+                            expected_pre_trigger_index,
+                            actual_relative_index,
+                            pre_trigger_discrepancy,
+                        )
+
+        # Post-capture display validation
+        validation_passed = self._validate_post_capture_trigger_alignment(
+            settings,
+            effective_trigger_index,
+            start_index,
+            sliced_count,
+            actual_interval_s,
+        )
+        if not validation_passed and settings.trigger.mode != "None":
+            CONTROLLER_LOGGER.warning(
+                "Trigger alignment validation failed. Consider using Block mode for more reliable trigger placement."
+            )
+
         return self._build_frame(
             settings,
             times,
@@ -1090,13 +1373,18 @@ class Pico2204AController:
     def capture(self, settings: ScopeState) -> CaptureFrame:
         self._connect_if_needed()
         if self._device is None:
-            CONTROLLER_LOGGER.warning("Capture requested without an active device connection.")
+            CONTROLLER_LOGGER.warning(
+                "Capture requested without an active device connection."
+            )
             raise RuntimeError(self._last_status)
 
+        # Check if we should fall back to Block mode for short timebases with trigger
+        effective_mode = settings.acquisition_mode
+        if self._should_fallback_to_block_for_trigger(settings):
+            effective_mode = "Block"
+
         try:
-            if settings.acquisition_mode == "Compatible streaming":
-                frame = self._capture_compatible_streaming(settings)
-            elif settings.acquisition_mode == "Fast streaming":
+            if effective_mode == "Fast streaming":
                 frame = self._capture_fast_streaming(settings)
             else:
                 frame = self._capture_block_mode(settings)
@@ -1104,7 +1392,7 @@ class Pico2204AController:
             self._last_source = frame.source_label
             CONTROLLER_LOGGER.info(
                 "Capture complete. mode=%s source=%s samples=%d sample_rate=%s",
-                settings.acquisition_mode,
+                effective_mode,
                 frame.source_label,
                 frame.sample_count,
                 frame.sample_rate_hz,
@@ -1113,7 +1401,5 @@ class Pico2204AController:
         except Exception as exc:
             self._last_status = f"Capture failed: {exc}"
             self._last_source = "Hardware"
-            CONTROLLER_LOGGER.exception("Capture failed. mode=%s", settings.acquisition_mode)
+            CONTROLLER_LOGGER.exception("Capture failed. mode=%s", effective_mode)
             raise RuntimeError(self._last_status) from exc
-
-

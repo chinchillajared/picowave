@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from picowave.config import DEFAULT_MAX_WAVEFORMS, RANGE_OPTIONS_2204A, SIGNAL_SMOOTHER_DEFAULT_SPAN
+from picowave.config import (
+    DEFAULT_MAX_WAVEFORMS,
+    RANGE_OPTIONS_2204A,
+    SIGNAL_SMOOTHER_DEFAULT_SPAN,
+)
 from picowave.helpers import clamp, format_probe_scale
 
 
@@ -117,8 +121,12 @@ class CaptureFrame:
     trigger_level_volts: float = 0.0
     trigger_time_ratio: float = 0.5
     trigger_confirmed: bool = False
-    channel_a_overrange: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.int8))
-    channel_b_overrange: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.int8))
+    channel_a_overrange: np.ndarray = field(
+        default_factory=lambda: np.array([], dtype=np.int8)
+    )
+    channel_b_overrange: np.ndarray = field(
+        default_factory=lambda: np.array([], dtype=np.int8)
+    )
 
     @property
     def total_span(self) -> float:
@@ -148,7 +156,9 @@ class AnnotationSettings:
     color_hex: str = "#1e73be"
 
 
-def build_empty_frame(settings: ScopeState, source_label: str, connection_label: str) -> CaptureFrame:
+def build_empty_frame(
+    settings: ScopeState, source_label: str, connection_label: str
+) -> CaptureFrame:
     return CaptureFrame(
         times=np.array([], dtype=np.float32),
         channel_a=np.array([], dtype=np.float32),
@@ -158,5 +168,52 @@ def build_empty_frame(settings: ScopeState, source_label: str, connection_label:
         y_range_volts=channel_display_range(settings.channel_a),
         source_label=source_label,
         connection_label=connection_label,
-        trigger_label=settings.trigger.mode if settings.trigger.mode != "None" else "None",
+        trigger_label=settings.trigger.mode
+        if settings.trigger.mode != "None"
+        else "None",
     )
+
+
+@dataclass
+class MeasurementLozenge:
+    """Lozenge display data for waveform overlay."""
+
+    name: str
+    value: float
+    unit: str
+    color_hex: str
+    position_x: float  # 0-1 normalized position on waveform
+    position_y: float  # 0-1 normalized position on waveform
+    threshold_level: str  # "green", "yellow", "red"
+
+    def to_display_text(self) -> str:
+        """Format for display."""
+        if abs(self.value) >= 1000:
+            return f"{self.name}: {self.value:.3g}k {self.unit}"
+        elif abs(self.value) < 0.01 and self.value != 0:
+            return f"{self.name}: {self.value * 1000:.3g}m {self.unit}"
+        else:
+            return f"{self.name}: {self.value:.3g} {self.unit}"
+
+
+@dataclass
+class DiagnosticReport:
+    """Diagnostic report for export."""
+
+    timestamp: float
+    template_name: str
+    measurements: list[dict]
+    channel_settings: dict
+    threshold_alerts: list[dict]
+    notes: str = ""
+
+    def to_json(self) -> dict:
+        """Convert to JSON-serializable dict."""
+        return {
+            "timestamp": self.timestamp,
+            "template": self.template_name,
+            "measurements": self.measurements,
+            "channel_settings": self.channel_settings,
+            "alerts": self.threshold_alerts,
+            "notes": self.notes,
+        }

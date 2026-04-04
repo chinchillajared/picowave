@@ -10,9 +10,7 @@ from PySide6.QtGui import QColor, QCursor, QIcon, QPainter, QPen, QPixmap
 from picowave.config import (
     ICON_DIR,
     ICON_FILES,
-    TRIGGER_ADVANCED_DIRECTIONS,
     TRIGGER_EDGE_DIRECTIONS,
-    TRIGGER_WINDOW_DIRECTIONS,
 )
 
 if TYPE_CHECKING:
@@ -87,26 +85,16 @@ def format_probe_scale(scale: int) -> str:
 
 
 def trigger_direction_options(trigger_type: str) -> list[str]:
-    if trigger_type == "Advanced edge":
-        return TRIGGER_ADVANCED_DIRECTIONS
-    if trigger_type == "Window":
-        return TRIGGER_WINDOW_DIRECTIONS
-    if trigger_type == "Logic":
-        return []
     return TRIGGER_EDGE_DIRECTIONS
 
 
 def format_trigger_summary(trigger: TriggerState) -> str:
     if trigger.mode == "None":
         return "None"
-    if trigger.trigger_type == "Logic":
-        return f"{trigger.mode} Logic"
     return f"{trigger.mode} {trigger.trigger_type}"
 
 
 def display_trigger_level(trigger: TriggerState) -> float:
-    if trigger.trigger_type == "Window":
-        return (trigger.lower_level_volts + trigger.upper_level_volts) / 2.0
     return trigger.level_volts
 
 

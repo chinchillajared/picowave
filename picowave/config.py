@@ -55,10 +55,9 @@ SAMPLE_RATE_OPTIONS = [
     1_000_000,
 ]
 BLOCK_BUFFER_SAMPLES_2204A = 8_000
-FAST_STREAMING_MAX_SAMPLES = 2_000_000
+FAST_STREAMING_MAX_SAMPLES = 8_000_000
 ACQUISITION_MODES = [
     "Block",
-    "Compatible streaming",
     "Fast streaming",
 ]
 RANGE_OPTIONS_2204A = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
@@ -101,12 +100,8 @@ SMOOTHING_STRENGTH_OPTIONS = [
 SMOOTHING_STRENGTH_LABELS = {span: label for label, span in SMOOTHING_STRENGTH_OPTIONS}
 TRIGGER_MODES = ["None", "Auto", "Repeat", "Single"]
 TRIGGER_SOURCES = ["A", "B"]
-TRIGGER_TYPES = ["Simple edge", "Advanced edge", "Window", "Pulse width", "Logic"]
+TRIGGER_TYPES = ["Simple edge"]
 TRIGGER_EDGE_DIRECTIONS = ["Rising", "Falling"]
-TRIGGER_ADVANCED_DIRECTIONS = ["Rising", "Falling", "Rising or Falling"]
-TRIGGER_WINDOW_DIRECTIONS = ["Inside", "Outside"]
-PULSE_WIDTH_TYPES = ["Less than", "Greater than", "In range", "Out of range"]
-TRIGGER_LOGIC_STATES = ["Don't care", "True", "False"]
 ANNOTATION_SCOPES = ["All captures", "This capture"]
 ANNOTATION_TOOLS = ["Off", "Pen", "Text", "Eraser"]
 ANNOTATION_COLORS = [
@@ -125,6 +120,9 @@ CUSTOM_CHANNEL_COLORS = [
 ]
 DEFAULT_MAX_WAVEFORMS = 60
 WAVEFORM_PREVIEW_PAGE_SIZE = 10
+# Fast streaming trigger alignment is less reliable at short timebases
+# This threshold (in seconds per division) determines when to fall back to Block mode
+FAST_STREAMING_TRIGGER_FALLBACK_THRESHOLD_S = 5e-6
 PACKAGE_ROOT = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.dirname(PACKAGE_ROOT)
 LOG_DIR = os.path.join(PROJECT_ROOT, "logs")

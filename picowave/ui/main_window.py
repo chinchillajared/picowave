@@ -1,11 +1,21 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import copy
 import math
 from typing import Optional
 
 from PySide6.QtCore import QEvent, QSize, QTimer, Qt
-from PySide6.QtWidgets import QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from picowave.config import *
 from picowave.controller import Pico2204AController
@@ -27,6 +37,8 @@ from picowave.ui.components import (
 )
 from picowave.ui.dialogs import AboutDialog, ScopeConnectDialog
 from picowave.worker import AcquisitionThread
+
+
 class MainWindow(QMainWindow):
     def __init__(
         self,
@@ -42,16 +54,22 @@ class MainWindow(QMainWindow):
         self._mode_invalid = False
         self._timing_invalid = False
         self._run_button_hint_text: str | None = None
-        self._default_hint_text = "Channel tiles toggle on and off. Trigger tile cycles modes."
+        self._default_hint_text = (
+            "Channel tiles toggle on and off. Trigger tile cycles modes."
+        )
         self._hint_text = self._default_hint_text
         self._hint_error = False
         self._manual_all_channels_off = False
         self.annotation_settings = AnnotationSettings()
-        self.waveform_annotations: dict[int, list[AnnotationStroke | AnnotationText]] = {}
+        self.waveform_annotations: dict[
+            int, list[AnnotationStroke | AnnotationText]
+        ] = {}
         self.global_annotations: list[AnnotationStroke | AnnotationText] = []
         self.connection_text = "Hardware: Connect a PicoScope 2204A to begin capture."
         self.history: list[CaptureFrame] = [
-            build_empty_frame(self.state, "Hardware", "Connect a PicoScope 2204A to begin capture.")
+            build_empty_frame(
+                self.state, "Hardware", "Connect a PicoScope 2204A to begin capture."
+            )
         ]
         self.history_index = 0
         self.controller = controller or Pico2204AController()
@@ -60,7 +78,9 @@ class MainWindow(QMainWindow):
         self.worker.capture_failed.connect(self.on_capture_failed)
         self.about_dialog = AboutDialog(self)
         self.connect_dialog = ScopeConnectDialog(self)
-        self.connect_dialog.refresh_button.clicked.connect(self.refresh_connect_dialog_devices)
+        self.connect_dialog.refresh_button.clicked.connect(
+            self.refresh_connect_dialog_devices
+        )
 
         self.setWindowTitle("PicoWave")
         self.resize(1800, 900)
@@ -143,21 +163,23 @@ class MainWindow(QMainWindow):
         self.trigger_control.body.clicked.connect(self.select_trigger_panel)
         controls_strip.addWidget(self.trigger_control)
 
-        self.timing_control = TimingControl(self.state.time_per_div, self.state.sample_rate_hz)
+        self.timing_control = TimingControl(
+            self.state.time_per_div, self.state.sample_rate_hz
+        )
         self.timing_control.body.clicked.connect(self.select_timing_panel)
-        self.timing_control.minus_button.clicked.connect(lambda: self.adjust_time_per_div(-1))
-        self.timing_control.plus_button.clicked.connect(lambda: self.adjust_time_per_div(1))
+        self.timing_control.minus_button.clicked.connect(
+            lambda: self.adjust_time_per_div(-1)
+        )
+        self.timing_control.plus_button.clicked.connect(
+            lambda: self.adjust_time_per_div(1)
+        )
         controls_strip.addWidget(self.timing_control)
 
         self.channel_a_control = ChannelControl(self.state.channel_a)
         self.channel_b_control = ChannelControl(self.state.channel_b)
         self.custom_channel_control = CustomChannelControl(self.state.custom_channel)
-        self.channel_a_control.body.clicked.connect(
-            lambda: self.select_channel("A")
-        )
-        self.channel_b_control.body.clicked.connect(
-            lambda: self.select_channel("B")
-        )
+        self.channel_a_control.body.clicked.connect(lambda: self.select_channel("A"))
+        self.channel_b_control.body.clicked.connect(lambda: self.select_channel("B"))
         self.custom_channel_control.body.clicked.connect(
             lambda: self.select_channel("Custom")
         )
@@ -184,8 +206,12 @@ class MainWindow(QMainWindow):
         top_bar = QHBoxLayout()
         top_bar.setSpacing(6)
         self.waveform_history_control = WaveformHistoryControl()
-        self.waveform_history_control.minus_button.clicked.connect(lambda: self.adjust_history(-1))
-        self.waveform_history_control.plus_button.clicked.connect(lambda: self.adjust_history(1))
+        self.waveform_history_control.minus_button.clicked.connect(
+            lambda: self.adjust_history(-1)
+        )
+        self.waveform_history_control.plus_button.clicked.connect(
+            lambda: self.adjust_history(1)
+        )
         self.waveform_history_control.body.clicked.connect(self.select_waveform_panel)
         top_bar.addWidget(self.waveform_history_control)
         self.scope_front_status = ScopeFrontStatusWidget()
@@ -204,7 +230,9 @@ class MainWindow(QMainWindow):
         waveform_preview_row.setSpacing(0)
         self.waveform_preview_prev_button = QPushButton("<")
         self.waveform_preview_prev_button.setObjectName("waveformPreviewNavButton")
-        self.waveform_preview_prev_button.clicked.connect(self.show_previous_waveform_preview_page)
+        self.waveform_preview_prev_button.clicked.connect(
+            self.show_previous_waveform_preview_page
+        )
         waveform_preview_row.addWidget(self.waveform_preview_prev_button)
         self.waveform_preview_body = QFrame()
         self.waveform_preview_body.setObjectName("waveformPreviewBody")
@@ -218,7 +246,9 @@ class MainWindow(QMainWindow):
         waveform_preview_row.addWidget(self.waveform_preview_body, 1)
         self.waveform_preview_next_button = QPushButton(">")
         self.waveform_preview_next_button.setObjectName("waveformPreviewNavButton")
-        self.waveform_preview_next_button.clicked.connect(self.show_next_waveform_preview_page)
+        self.waveform_preview_next_button.clicked.connect(
+            self.show_next_waveform_preview_page
+        )
         waveform_preview_row.addWidget(self.waveform_preview_next_button)
         self.waveform_preview_container = QWidget()
         self.waveform_preview_container.setLayout(waveform_preview_row)
@@ -226,13 +256,25 @@ class MainWindow(QMainWindow):
 
         # Frontend: central waveform viewer.
         self.waveform_canvas = WaveformCanvas()
-        self.waveform_canvas.annotation_button_clicked.connect(self.select_annotation_panel)
-        self.waveform_canvas.annotation_interaction_started.connect(self.start_annotation_interaction)
-        self.waveform_canvas.zoom_box_mode_changed.connect(self.handle_zoom_box_mode_changed)
-        self.waveform_canvas.vertical_offset_changed.connect(self.set_channel_vertical_offset)
-        self.waveform_canvas.channel_display_zoom_changed.connect(self.set_channel_display_zoom)
+        self.waveform_canvas.annotation_button_clicked.connect(
+            self.select_annotation_panel
+        )
+        self.waveform_canvas.annotation_interaction_started.connect(
+            self.start_annotation_interaction
+        )
+        self.waveform_canvas.zoom_box_mode_changed.connect(
+            self.handle_zoom_box_mode_changed
+        )
+        self.waveform_canvas.vertical_offset_changed.connect(
+            self.set_channel_vertical_offset
+        )
+        self.waveform_canvas.channel_display_zoom_changed.connect(
+            self.set_channel_display_zoom
+        )
         self.waveform_canvas.trigger_level_changed.connect(self.set_trigger_level_value)
-        self.waveform_canvas.trigger_pre_trigger_changed.connect(self.set_pre_trigger_percent_value)
+        self.waveform_canvas.trigger_pre_trigger_changed.connect(
+            self.set_pre_trigger_percent_value
+        )
         right_column.addWidget(self.waveform_canvas, 1)
         content.addLayout(right_column, 1)
         root.addLayout(content, 1)
@@ -962,6 +1004,11 @@ class MainWindow(QMainWindow):
                 color: #c1292e;
                 border-color: #ef3340;
             }
+            #selectorActionButton[tone="primary"] {
+                background: #1e73be;
+                border-color: #1e73be;
+                color: white;
+            }
             #selectorActionButton:hover {
                 background: #f8fbff;
                 border-color: #9eb7d2;
@@ -969,6 +1016,20 @@ class MainWindow(QMainWindow):
             #selectorActionButton[tone="danger"]:hover {
                 background: #fde1e4;
                 border-color: #ef3340;
+            }
+            #selectorActionButton[tone="primary"]:hover {
+                background: #185f9d;
+                border-color: #185f9d;
+            }
+            #selectorActionButton:checked {
+                background: #e8f3ff;
+                border-color: #1e73be;
+                color: #1e73be;
+            }
+            #selectorActionButton:checked[tone="primary"] {
+                background: #1e73be;
+                border-color: #1e73be;
+                color: white;
             }
             #selectorInfoButton {
                 background: white;
@@ -1066,7 +1127,9 @@ class MainWindow(QMainWindow):
         return self.history[self.history_index]
 
     def _history_display_state(self) -> tuple[int, int]:
-        captured_indices = [index for index, frame in enumerate(self.history) if frame.sample_count > 0]
+        captured_indices = [
+            index for index, frame in enumerate(self.history) if frame.sample_count > 0
+        ]
         if not captured_indices:
             return 0, 0
         total_count = len(captured_indices)
@@ -1076,7 +1139,11 @@ class MainWindow(QMainWindow):
         return current_index, total_count
 
     def _push_frame(self, frame: CaptureFrame) -> None:
-        if len(self.history) == 1 and self.history[0].sample_count == 0 and frame.sample_count > 0:
+        if (
+            len(self.history) == 1
+            and self.history[0].sample_count == 0
+            and frame.sample_count > 0
+        ):
             self.history = [frame]
             self.history_index = 0
             return
@@ -1086,7 +1153,9 @@ class MainWindow(QMainWindow):
 
     def _reset_waveform_history(self) -> None:
         self.history = [
-            build_empty_frame(self.state, "Hardware", "Capture history cleared after timebase change.")
+            build_empty_frame(
+                self.state, "Hardware", "Capture history cleared after timebase change."
+            )
         ]
         self.history_index = 0
 
@@ -1101,7 +1170,9 @@ class MainWindow(QMainWindow):
             return
         removed_count = len(self.history) - max_waveforms
         self.history = self.history[-max_waveforms:]
-        self.history_index = int(clamp(self.history_index - removed_count, 0, len(self.history) - 1))
+        self.history_index = int(
+            clamp(self.history_index - removed_count, 0, len(self.history) - 1)
+        )
 
     def _connection_text_is_error(self) -> bool:
         text = self.connection_text.lower()
@@ -1154,7 +1225,9 @@ class MainWindow(QMainWindow):
         ]
         return current_available, compatible_modes
 
-    def _flash_invalid_controls(self, *, mode: bool = False, timing: bool = False) -> None:
+    def _flash_invalid_controls(
+        self, *, mode: bool = False, timing: bool = False
+    ) -> None:
         self._invalid_flash_token += 1
         flash_token = self._invalid_flash_token
         self._mode_invalid = mode
@@ -1176,7 +1249,9 @@ class MainWindow(QMainWindow):
     def _sync_ui(self) -> None:
         frame = self._current_frame()
         self.run_button.setEnabled(self.controller.is_connected)
-        run_button_text = self._run_button_hint_text or ("running" if self.state.running else "stopped")
+        run_button_text = self._run_button_hint_text or (
+            "running" if self.state.running else "stopped"
+        )
         self.run_button.setText(run_button_text)
         self.run_button.setIcon(load_icon("run" if self.state.running else "stop"))
         self.run_button.setProperty("running", self.state.running)
@@ -1186,10 +1261,17 @@ class MainWindow(QMainWindow):
         history_current, history_total = self._history_display_state()
         self.waveform_history_control.set_state(history_current, history_total)
         self.waveform_preview_strip.set_history(self.history, self.history_index)
-        preview_visible = self.selected_panel == ("waveform", None) and self._stored_waveform_count() > 0
+        preview_visible = (
+            self.selected_panel == ("waveform", None)
+            and self._stored_waveform_count() > 0
+        )
         self.waveform_preview_container.setVisible(preview_visible)
-        self.waveform_preview_prev_button.setEnabled(self.waveform_preview_strip.has_previous_page())
-        self.waveform_preview_next_button.setEnabled(self.waveform_preview_strip.has_next_page())
+        self.waveform_preview_prev_button.setEnabled(
+            self.waveform_preview_strip.has_previous_page()
+        )
+        self.waveform_preview_next_button.setEnabled(
+            self.waveform_preview_strip.has_next_page()
+        )
         self.scope_front_status.set_channel_state(
             self.state.channel_a.enabled,
             self.state.channel_b.enabled,
@@ -1199,7 +1281,9 @@ class MainWindow(QMainWindow):
         self.mode_control.body.style().unpolish(self.mode_control.body)
         self.mode_control.body.style().polish(self.mode_control.body)
         self.trigger_control.set_trigger(self.state.trigger)
-        self.timing_control.set_values(self.state.time_per_div, self.state.sample_rate_hz)
+        self.timing_control.set_values(
+            self.state.time_per_div, self.state.sample_rate_hz
+        )
         current_time_index = TIME_PER_DIV_OPTIONS.index(self.state.time_per_div)
         self.timing_control.set_step_state(
             current_time_index > 0,
@@ -1230,18 +1314,32 @@ class MainWindow(QMainWindow):
                 else:
                     self.selection_panel.set_channel(
                         self._channel_ref(panel_name),
-                        lambda value, channel_name=panel_name: self.set_channel_panel_tab(channel_name, value),
-                        lambda value, channel_name=panel_name: self.set_channel_voltage(channel_name, value),
-                        lambda value, channel_name=panel_name: self.set_channel_coupling(channel_name, value),
-                        lambda value, channel_name=panel_name: self.set_channel_invert(channel_name, value == "On"),
-                        lambda value, channel_name=panel_name: self.set_channel_probe_scale(channel_name, value),
-                        lambda _checked=False, channel_name=panel_name: self.turn_channel_off(channel_name),
+                        lambda value, channel_name=panel_name: (
+                            self.set_channel_panel_tab(channel_name, value)
+                        ),
+                        lambda value, channel_name=panel_name: self.set_channel_voltage(
+                            channel_name, value
+                        ),
+                        lambda value, channel_name=panel_name: (
+                            self.set_channel_coupling(channel_name, value)
+                        ),
+                        lambda value, channel_name=panel_name: self.set_channel_invert(
+                            channel_name, value == "On"
+                        ),
+                        lambda value, channel_name=panel_name: (
+                            self.set_channel_probe_scale(channel_name, value)
+                        ),
+                        lambda _checked=False, channel_name=panel_name: (
+                            self.turn_channel_off(channel_name)
+                        ),
                     )
             elif panel_kind == "timing":
-                available_rates, compatible_rates, unavailable_rates = classify_sample_rates(
-                    self.state.time_per_div,
-                    self.state.acquisition_mode,
-                    planning_active_channel_count(self.state),
+                available_rates, compatible_rates, unavailable_rates = (
+                    classify_sample_rates(
+                        self.state.time_per_div,
+                        self.state.acquisition_mode,
+                        planning_active_channel_count(self.state),
+                    )
                 )
                 self.selection_panel.set_timing(
                     self.state.time_per_div,
@@ -1281,12 +1379,6 @@ class MainWindow(QMainWindow):
                     self.set_trigger_source,
                     self.set_trigger_direction,
                     self.adjust_trigger_level,
-                    self.adjust_trigger_lower_level,
-                    self.adjust_trigger_upper_level,
-                    self.set_pulse_width_type,
-                    self.adjust_pulse_width_lower,
-                    self.adjust_pulse_width_upper,
-                    self.set_logic_state,
                     self.adjust_pre_trigger_percent,
                 )
             self.selection_panel.show()
@@ -1295,9 +1387,12 @@ class MainWindow(QMainWindow):
             self.waveform_annotations.setdefault(self.history_index, []),
             self.global_annotations,
         )
-        self.waveform_canvas.set_annotation_panel_open(self.selected_panel == ("annotations", None))
+        self.waveform_canvas.set_annotation_panel_open(
+            self.selected_panel == ("annotations", None)
+        )
         self.waveform_canvas.set_annotation_button_active(
-            self.selected_panel == ("annotations", None) or self.waveform_canvas.has_visible_annotations()
+            self.selected_panel == ("annotations", None)
+            or self.waveform_canvas.has_visible_annotations()
         )
         self.waveform_canvas.set_state(self.state)
         self.waveform_canvas.set_frame(frame)
@@ -1322,7 +1417,11 @@ class MainWindow(QMainWindow):
 
     def refresh_connect_dialog_devices(self) -> None:
         devices = self.controller.list_available_devices()
-        status_text = self.controller.status_text if not devices else "Choose an available oscilloscope and press Connect."
+        status_text = (
+            self.controller.status_text
+            if not devices
+            else "Choose an available oscilloscope and press Connect."
+        )
         self.connect_dialog.set_devices(devices, status_text)
 
     def show_connect_dialog(self) -> None:
@@ -1332,9 +1431,7 @@ class MainWindow(QMainWindow):
 
     def connect_scope(self, serial: str | None = None) -> None:
         if self.controller.connect_device(serial):
-            self.connection_text = (
-                f"Hardware: {self.controller.status_text} | Mode: {self.state.acquisition_mode}"
-            )
+            self.connection_text = f"Hardware: {self.controller.status_text} | Mode: {self.state.acquisition_mode}"
         else:
             self.connection_text = f"Hardware: {self.controller.status_text}"
         self._set_run_button_hint(None)
@@ -1347,13 +1444,17 @@ class MainWindow(QMainWindow):
         if not self.state.running and not self._has_enabled_channel():
             if self._manual_all_channels_off:
                 self.state.running = False
-                self.connection_text = "Hardware: Enable Channel A or B before starting acquisition."
+                self.connection_text = (
+                    "Hardware: Enable Channel A or B before starting acquisition."
+                )
                 self._set_run_button_hint(None)
                 self._reset_hint()
                 self._sync_ui()
                 return
             self.state.channel_a.enabled = True
-            self.connection_text = "Hardware: Channel A enabled automatically for acquisition."
+            self.connection_text = (
+                "Hardware: Channel A enabled automatically for acquisition."
+            )
         if not self.state.running:
             current_available, compatible_modes = self._current_timing_compatibility()
             if not current_available:
@@ -1365,15 +1466,18 @@ class MainWindow(QMainWindow):
                         f"{self.state.acquisition_mode}."
                     )
                     self._set_run_button_hint(
-                        f"Use {compatible_modes[0]}" if len(compatible_modes) == 1 else "Change Mode"
+                        f"Use {compatible_modes[0]}"
+                        if len(compatible_modes) == 1
+                        else "Change Mode"
                     )
                     self._set_hint(f"Suggested mode: {modes_text}.", error=True)
                 else:
-                    self.connection_text = (
-                        "Hardware: Selected timebase and sample rate are not available on this device."
-                    )
+                    self.connection_text = "Hardware: Selected timebase and sample rate are not available on this device."
                     self._set_run_button_hint("Invalid Timing")
-                    self._set_hint("Selected mode and timing are not supported on this device.", error=True)
+                    self._set_hint(
+                        "Selected mode and timing are not supported on this device.",
+                        error=True,
+                    )
                 self._flash_invalid_controls(mode=True, timing=True)
                 return
         self._set_run_button_hint(None)
@@ -1385,9 +1489,13 @@ class MainWindow(QMainWindow):
 
     def adjust_time_per_div(self, step: int) -> None:
         current_index = TIME_PER_DIV_OPTIONS.index(self.state.time_per_div)
-        current_index = int(clamp(current_index + step, 0, len(TIME_PER_DIV_OPTIONS) - 1))
+        current_index = int(
+            clamp(current_index + step, 0, len(TIME_PER_DIV_OPTIONS) - 1)
+        )
         new_timebase = TIME_PER_DIV_OPTIONS[current_index]
-        if math.isclose(new_timebase, self.state.time_per_div, rel_tol=1e-12, abs_tol=1e-12):
+        if math.isclose(
+            new_timebase, self.state.time_per_div, rel_tol=1e-12, abs_tol=1e-12
+        ):
             return
         self.state.time_per_div = new_timebase
         self._reset_waveform_history()
@@ -1397,7 +1505,9 @@ class MainWindow(QMainWindow):
         self._sync_ui()
 
     def set_timebase_value(self, time_per_div: float) -> None:
-        if math.isclose(time_per_div, self.state.time_per_div, rel_tol=1e-12, abs_tol=1e-12):
+        if math.isclose(
+            time_per_div, self.state.time_per_div, rel_tol=1e-12, abs_tol=1e-12
+        ):
             return
         self.state.time_per_div = time_per_div
         self._reset_waveform_history()
@@ -1408,7 +1518,9 @@ class MainWindow(QMainWindow):
 
     def adjust_sample_rate(self, step: int) -> None:
         current_index = SAMPLE_RATE_OPTIONS.index(self.state.sample_rate_hz)
-        current_index = int(clamp(current_index + step, 0, len(SAMPLE_RATE_OPTIONS) - 1))
+        current_index = int(
+            clamp(current_index + step, 0, len(SAMPLE_RATE_OPTIONS) - 1)
+        )
         self.state.sample_rate_hz = SAMPLE_RATE_OPTIONS[current_index]
         self._sync_ui()
 
@@ -1434,7 +1546,9 @@ class MainWindow(QMainWindow):
         if mode == "Unlimited":
             self.state.max_waveforms = 0
         else:
-            self.state.max_waveforms = max(1, self.state.max_waveforms or DEFAULT_MAX_WAVEFORMS)
+            self.state.max_waveforms = max(
+                1, self.state.max_waveforms or DEFAULT_MAX_WAVEFORMS
+            )
         self._enforce_history_limit()
         self._sync_ui()
 
@@ -1451,7 +1565,9 @@ class MainWindow(QMainWindow):
         self._enforce_history_limit()
         self._sync_ui()
 
-    def _available_sample_rates_for_current_mode(self, time_per_div: float) -> list[float]:
+    def _available_sample_rates_for_current_mode(
+        self, time_per_div: float
+    ) -> list[float]:
         available_rates, _compatible_rates, _ = classify_sample_rates(
             time_per_div,
             self.state.acquisition_mode,
@@ -1469,7 +1585,9 @@ class MainWindow(QMainWindow):
         # Single normalization point for timing changes. Whenever timebase, mode,
         # or active-channel count changes, this keeps the sample-rate pair honest
         # for the current mode instead of silently drifting into another mode.
-        available_rates = self._available_sample_rates_for_current_mode(self.state.time_per_div)
+        available_rates = self._available_sample_rates_for_current_mode(
+            self.state.time_per_div
+        )
         if not available_rates:
             return
         if force_max or self.state.sample_rate_hz not in available_rates:
@@ -1519,65 +1637,7 @@ class MainWindow(QMainWindow):
         channel = self._channel_ref(self.state.trigger.source)
         max_level = channel_display_range(channel) if channel.enabled else 20.0
         clamped_level = clamp(level_volts, -max_level, max_level)
-        if self.state.trigger.trigger_type == "Window":
-            current_span = self.state.trigger.upper_level_volts - self.state.trigger.lower_level_volts
-            half_span = max(abs(current_span) / 2.0, 0.01)
-            self.state.trigger.lower_level_volts = clamp(clamped_level - half_span, -max_level, max_level)
-            self.state.trigger.upper_level_volts = clamp(clamped_level + half_span, -max_level, max_level)
-            if self.state.trigger.lower_level_volts > self.state.trigger.upper_level_volts:
-                self.state.trigger.lower_level_volts, self.state.trigger.upper_level_volts = (
-                    self.state.trigger.upper_level_volts,
-                    self.state.trigger.lower_level_volts,
-                )
-        else:
-            self.state.trigger.level_volts = clamped_level
-        self._sync_ui()
-
-    def adjust_trigger_lower_level(self, step: int) -> None:
-        channel = self._channel_ref(self.state.trigger.source)
-        max_level = channel_display_range(channel) if channel.enabled else 20.0
-        self.state.trigger.lower_level_volts = clamp(
-            self.state.trigger.lower_level_volts + (0.1 * max_level * step),
-            -max_level,
-            max_level,
-        )
-        self._sync_ui()
-
-    def adjust_trigger_upper_level(self, step: int) -> None:
-        channel = self._channel_ref(self.state.trigger.source)
-        max_level = channel_display_range(channel) if channel.enabled else 20.0
-        self.state.trigger.upper_level_volts = clamp(
-            self.state.trigger.upper_level_volts + (0.1 * max_level * step),
-            -max_level,
-            max_level,
-        )
-        self._sync_ui()
-
-    def set_pulse_width_type(self, pulse_width_type: str) -> None:
-        if pulse_width_type not in PULSE_WIDTH_TYPES:
-            return
-        self.state.trigger.pulse_width_type = pulse_width_type
-        self._sync_ui()
-
-    def adjust_pulse_width_lower(self, step: int) -> None:
-        self.state.trigger.pulse_width_lower = max(1, self.state.trigger.pulse_width_lower + (10 * step))
-        if self.state.trigger.pulse_width_upper < self.state.trigger.pulse_width_lower:
-            self.state.trigger.pulse_width_upper = self.state.trigger.pulse_width_lower
-        self._sync_ui()
-
-    def adjust_pulse_width_upper(self, step: int) -> None:
-        self.state.trigger.pulse_width_upper = max(1, self.state.trigger.pulse_width_upper + (10 * step))
-        if self.state.trigger.pulse_width_upper < self.state.trigger.pulse_width_lower:
-            self.state.trigger.pulse_width_lower = self.state.trigger.pulse_width_upper
-        self._sync_ui()
-
-    def set_logic_state(self, channel_name: str, state_name: str) -> None:
-        if channel_name not in ("A", "B") or state_name not in TRIGGER_LOGIC_STATES:
-            return
-        if channel_name == "A":
-            self.state.trigger.logic_a_state = state_name
-        else:
-            self.state.trigger.logic_b_state = state_name
+        self.state.trigger.level_volts = clamped_level
         self._sync_ui()
 
     def adjust_pre_trigger_percent(self, step: int) -> None:
@@ -1591,7 +1651,9 @@ class MainWindow(QMainWindow):
         self._sync_ui()
 
     def adjust_history(self, step: int) -> None:
-        self.history_index = int(clamp(self.history_index + step, 0, len(self.history) - 1))
+        self.history_index = int(
+            clamp(self.history_index + step, 0, len(self.history) - 1)
+        )
         self._sync_ui()
 
     def select_history_frame(self, history_index: int) -> None:
@@ -1603,13 +1665,21 @@ class MainWindow(QMainWindow):
 
     def show_previous_waveform_preview_page(self) -> None:
         self.waveform_preview_strip.previous_page()
-        self.waveform_preview_prev_button.setEnabled(self.waveform_preview_strip.has_previous_page())
-        self.waveform_preview_next_button.setEnabled(self.waveform_preview_strip.has_next_page())
+        self.waveform_preview_prev_button.setEnabled(
+            self.waveform_preview_strip.has_previous_page()
+        )
+        self.waveform_preview_next_button.setEnabled(
+            self.waveform_preview_strip.has_next_page()
+        )
 
     def show_next_waveform_preview_page(self) -> None:
         self.waveform_preview_strip.next_page()
-        self.waveform_preview_prev_button.setEnabled(self.waveform_preview_strip.has_previous_page())
-        self.waveform_preview_next_button.setEnabled(self.waveform_preview_strip.has_next_page())
+        self.waveform_preview_prev_button.setEnabled(
+            self.waveform_preview_strip.has_previous_page()
+        )
+        self.waveform_preview_next_button.setEnabled(
+            self.waveform_preview_strip.has_next_page()
+        )
 
     def page_waveform_previews(self, step: int) -> None:
         if step < 0:
@@ -1669,7 +1739,10 @@ class MainWindow(QMainWindow):
         self._sync_ui()
 
     def select_channel(self, name: str) -> None:
-        if self.selected_panel == ("channel", name) and self.selection_panel.isVisible():
+        if (
+            self.selected_panel == ("channel", name)
+            and self.selection_panel.isVisible()
+        ):
             self._set_selected_panel(None)
         else:
             self._set_selected_panel(("channel", name))
@@ -1683,7 +1756,10 @@ class MainWindow(QMainWindow):
         self._sync_ui()
 
     def select_waveform_panel(self) -> None:
-        if self.selected_panel == ("waveform", None) and self.selection_panel.isVisible():
+        if (
+            self.selected_panel == ("waveform", None)
+            and self.selection_panel.isVisible()
+        ):
             self._set_selected_panel(None)
         else:
             self._set_selected_panel(("waveform", None))
@@ -1692,7 +1768,10 @@ class MainWindow(QMainWindow):
     def select_annotation_panel(self) -> None:
         if self.selected_panel != ("annotations", None):
             self.waveform_canvas.set_zoom_box_mode(False)
-        if self.selected_panel == ("annotations", None) and self.selection_panel.isVisible():
+        if (
+            self.selected_panel == ("annotations", None)
+            and self.selection_panel.isVisible()
+        ):
             self._set_selected_panel(None)
         else:
             self._set_selected_panel(("annotations", None))
@@ -1709,7 +1788,10 @@ class MainWindow(QMainWindow):
             self._sync_ui()
 
     def select_trigger_panel(self) -> None:
-        if self.selected_panel == ("trigger", None) and self.selection_panel.isVisible():
+        if (
+            self.selected_panel == ("trigger", None)
+            and self.selection_panel.isVisible()
+        ):
             self._set_selected_panel(None)
         else:
             self._set_selected_panel(("trigger", None))
@@ -1733,9 +1815,7 @@ class MainWindow(QMainWindow):
         self._reset_waveform_history()
         self._normalize_sample_rate_for_current_timing(force_max=False)
         if self.controller.is_connected:
-            self.connection_text = (
-                f"Hardware: {self.controller.status_text} | Mode: {self.state.acquisition_mode}"
-            )
+            self.connection_text = f"Hardware: {self.controller.status_text} | Mode: {self.state.acquisition_mode}"
         self._set_run_button_hint(None)
         self._reset_hint()
         self._sync_ui()
@@ -1769,7 +1849,10 @@ class MainWindow(QMainWindow):
         if name is None:
             return
         channel = self._channel_ref(name)
-        if math.isclose(channel.range_volts, volts, rel_tol=1e-12, abs_tol=1e-12) and channel.enabled:
+        if (
+            math.isclose(channel.range_volts, volts, rel_tol=1e-12, abs_tol=1e-12)
+            and channel.enabled
+        ):
             return
         channel.range_volts = volts
         channel.enabled = True
@@ -1806,7 +1889,9 @@ class MainWindow(QMainWindow):
         if name is None:
             return
         if name == "Custom":
-            self.state.custom_channel.vertical_offset_divs = float(clamp(offset_divs, -5.0, 5.0))
+            self.state.custom_channel.vertical_offset_divs = float(
+                clamp(offset_divs, -5.0, 5.0)
+            )
             self._sync_ui()
             return
         channel = self._channel_ref(name)
@@ -1827,8 +1912,13 @@ class MainWindow(QMainWindow):
         channel.probe_scale = probe_scale
         channel.probe = format_probe_scale(probe_scale)
         available_ranges = channel_voltage_options(channel)
-        if not any(math.isclose(channel.range_volts, option, rel_tol=1e-12, abs_tol=1e-12) for option in available_ranges):
-            channel.range_volts = min(available_ranges, key=lambda option: abs(option - channel.range_volts))
+        if not any(
+            math.isclose(channel.range_volts, option, rel_tol=1e-12, abs_tol=1e-12)
+            for option in available_ranges
+        ):
+            channel.range_volts = min(
+                available_ranges, key=lambda option: abs(option - channel.range_volts)
+            )
         self._sync_ui()
 
     def set_custom_channel_source(self, source: str) -> None:
@@ -1889,7 +1979,10 @@ class MainWindow(QMainWindow):
     def adjust_channel_range(self, name: str, step: int) -> None:
         channel = self._channel_ref(name)
         options = channel_voltage_options(channel)
-        current_index = min(range(len(options)), key=lambda index: abs(options[index] - channel.range_volts))
+        current_index = min(
+            range(len(options)),
+            key=lambda index: abs(options[index] - channel.range_volts),
+        )
         current_index = int(clamp(current_index + step, 0, len(options) - 1))
         channel.range_volts = options[current_index]
         channel.enabled = True
@@ -1899,7 +1992,9 @@ class MainWindow(QMainWindow):
     def toggle_channel(self, name: str) -> None:
         if name == "A":
             self.state.channel_a.enabled = True
-            self.state.channel_a.coupling = "DC" if self.state.channel_a.coupling == "AC" else "AC"
+            self.state.channel_a.coupling = (
+                "DC" if self.state.channel_a.coupling == "AC" else "AC"
+            )
         else:
             self.state.channel_b.enabled = not self.state.channel_b.enabled
         self._sync_ui()
@@ -1915,9 +2010,7 @@ class MainWindow(QMainWindow):
             self.scope_front_status.blink_activity()
         if self.state.trigger.mode == "Single":
             self.state.running = False
-        self.connection_text = (
-            f"{frame.source_label}: {frame.connection_label} | Mode: {self.state.acquisition_mode}"
-        )
+        self.connection_text = f"{frame.source_label}: {frame.connection_label} | Mode: {self.state.acquisition_mode}"
         self._set_run_button_hint(None)
         self._reset_hint()
         self._sync_ui()
@@ -1928,6 +2021,3 @@ class MainWindow(QMainWindow):
         self._set_run_button_hint("Check Settings")
         self._set_hint("Review Mode and Timebase / Sample rate settings.", error=True)
         self._sync_ui()
-
-
-

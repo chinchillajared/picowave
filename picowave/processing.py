@@ -12,6 +12,8 @@ from picowave.config import (
 )
 from picowave.helpers import clamp
 from picowave.models import ScopeState
+
+
 def requested_sample_count(time_per_div: float, sample_rate_hz: float) -> int:
     return max(1, int(round(time_per_div * 10.0 * sample_rate_hz)))
 
@@ -34,13 +36,10 @@ def is_sample_rate_available_for_mode(
     total_samples = requested_sample_count(time_per_div, sample_rate_hz)
     if mode == "Block":
         return 200 <= total_samples <= block_max_sample_count(active_channel_count)
-    if mode == "Compatible streaming":
-        if sample_rate_hz > 1_000:
-            return False
-        interval_ms = 1000.0 / sample_rate_hz
-        return abs(interval_ms - round(interval_ms)) < 1e-9 and total_samples <= 60_000
     if mode == "Fast streaming":
-        return sample_rate_hz <= 1_000_000 and total_samples <= FAST_STREAMING_MAX_SAMPLES
+        return (
+            sample_rate_hz <= 1_000_000 and total_samples <= FAST_STREAMING_MAX_SAMPLES
+        )
     return False
 
 
@@ -61,7 +60,9 @@ def classify_sample_rates(
         supported_modes = [
             mode
             for mode in ACQUISITION_MODES
-            if is_sample_rate_available_for_mode(mode, time_per_div, sample_rate, active_channel_count)
+            if is_sample_rate_available_for_mode(
+                mode, time_per_div, sample_rate, active_channel_count
+            )
         ]
         if current_mode in supported_modes:
             available.append(sample_rate)
@@ -70,11 +71,15 @@ def classify_sample_rates(
                 compatible_elsewhere.setdefault(mode, []).append(sample_rate)
         else:
             unavailable.append(sample_rate)
-    compatible_elsewhere = {mode: values for mode, values in compatible_elsewhere.items() if values}
+    compatible_elsewhere = {
+        mode: values for mode, values in compatible_elsewhere.items() if values
+    }
     return available, compatible_elsewhere, unavailable
 
 
-def smooth_signal(values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN) -> np.ndarray:
+def smooth_signal(
+    values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN
+) -> np.ndarray:
     # MATLAB's "smooth" moving-average behavior keeps the center point aligned
     # with an odd span and shrinks the usable neighborhood at the edges. That
     # gives a predictable low-pass smoother without pulling endpoints outward.
@@ -89,13 +94,17 @@ def smooth_signal(values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN) 
     local_half = np.minimum(np.minimum(indexes, values.size - indexes - 1), half_window)
     starts = indexes - local_half
     ends = indexes + local_half + 1
-    prefix = np.concatenate(([0.0], np.cumsum(values.astype(np.float64, copy=False), dtype=np.float64)))
+    prefix = np.concatenate(
+        ([0.0], np.cumsum(values.astype(np.float64, copy=False), dtype=np.float64))
+    )
     sums = prefix[ends] - prefix[starts]
     counts = (ends - starts).astype(np.float64)
     return (sums / counts).astype(np.float32)
 
 
-def savitzky_golay_smooth(values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN, degree: int = 3) -> np.ndarray:
+def savitzky_golay_smooth(
+    values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN, degree: int = 3
+) -> np.ndarray:
     if values.size <= 2:
         return values.astype(np.float32, copy=True)
     span = max(3, int(span))
@@ -167,25 +176,37 @@ def _lowess_core(values: np.ndarray, span: int, *, robust: bool) -> np.ndarray:
     return fitted.astype(np.float32)
 
 
-def lowess_smooth(values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN) -> np.ndarray:
+def lowess_smooth(
+    values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN
+) -> np.ndarray:
     return _lowess_core(values, span, robust=False)
 
 
-def robust_lowess_smooth(values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN) -> np.ndarray:
+def robust_lowess_smooth(
+    values: np.ndarray, span: int = SIGNAL_SMOOTHER_DEFAULT_SPAN
+) -> np.ndarray:
     return _lowess_core(values, span, robust=True)
 
 
-def _resample_for_smoothing(values: np.ndarray, max_points: int | None) -> tuple[np.ndarray, np.ndarray | None]:
+def _resample_for_smoothing(
+    values: np.ndarray, max_points: int | None
+) -> tuple[np.ndarray, np.ndarray | None]:
     if max_points is None or values.size <= max_points:
         return values.astype(np.float32, copy=False), None
     full_x = np.arange(values.size, dtype=np.float64)
-    sample_x = np.linspace(0.0, float(values.size - 1), num=max_points, dtype=np.float64)
-    sampled = np.interp(sample_x, full_x, values.astype(np.float64, copy=False)).astype(np.float32)
+    sample_x = np.linspace(
+        0.0, float(values.size - 1), num=max_points, dtype=np.float64
+    )
+    sampled = np.interp(sample_x, full_x, values.astype(np.float64, copy=False)).astype(
+        np.float32
+    )
     return sampled, sample_x
 
 
 def apply_smoothing_method(values: np.ndarray, method: str, span: int) -> np.ndarray:
-    working_values, sample_x = _resample_for_smoothing(values, SMOOTHING_PREVIEW_POINT_LIMITS.get(method))
+    working_values, sample_x = _resample_for_smoothing(
+        values, SMOOTHING_PREVIEW_POINT_LIMITS.get(method)
+    )
     if method == "savitzky_golay":
         smoothed = savitzky_golay_smooth(working_values, span=span)
     elif method == "lowess":
@@ -199,12 +220,14 @@ def apply_smoothing_method(values: np.ndarray, method: str, span: int) -> np.nda
         return smoothed
 
     full_x = np.arange(values.size, dtype=np.float64)
-    return np.interp(full_x, sample_x, smoothed.astype(np.float64, copy=False)).astype(np.float32)
+    return np.interp(full_x, sample_x, smoothed.astype(np.float64, copy=False)).astype(
+        np.float32
+    )
 
 
-def sample_count_for_span(total_span_s: float, interval_s: float, *, minimum: int = 1) -> int:
+def sample_count_for_span(
+    total_span_s: float, interval_s: float, *, minimum: int = 1
+) -> int:
     if total_span_s <= 0.0 or interval_s <= 0.0:
         return int(max(1, minimum))
     return max(int(minimum), int(round(total_span_s / interval_s)) + 1)
-
-
